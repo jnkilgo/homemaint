@@ -103,4 +103,11 @@ npm run build
 
 ## License
 
-Private — not yet licensed for public distribution.
+Copyright © 2026 Justin Kilgo. All Rights Reserved.
+
+This repository contains proprietary software. The source code is shared for
+review and limited use only. It is **not open source** and may not be copied,
+modified, redistributed, or used to create derivative works without explicit
+written permission from the author.
+
+See the LICENSE file for full terms.
