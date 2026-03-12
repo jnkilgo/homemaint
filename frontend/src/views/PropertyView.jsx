@@ -1004,10 +1004,14 @@ function HistoryTab({ asset, logs, onReload }) {
   const [error, setError] = useState('')
   const [showFreeform, setShowFreeform] = useState(false)
   const [contractors, setContractors] = useState([])
+  const [usageLogs, setUsageLogs] = useState([])
 
   useEffect(() => {
     api.getContractors().then(setContractors).catch(() => {})
-  }, [])
+    if (asset.interval_type) {
+      api.getUsageLogs(asset.id).then(setUsageLogs).catch(() => {})
+    }
+  }, [asset.id])
 
   function startEdit(l) {
     setEditLog(l.id)
@@ -1044,6 +1048,37 @@ function HistoryTab({ asset, logs, onReload }) {
     } catch (e) { setError(e.message) }
   }
 
+  // Merge completion logs + usage logs into one timeline
+  const allEntries = [
+    ...logs.map(l => ({ ...l, _type: 'completion', _date: l.completed_at })),
+    ...usageLogs.map(u => ({ ...u, _type: 'usage', _date: u.logged_at || u.created_at })),
+  ].sort((a, b) => new Date(b._date) - new Date(a._date))
+
+  // Group by year
+  const byYear = {}
+  allEntries.forEach(e => {
+    const yr = new Date(e._date).getFullYear()
+    if (!byYear[yr]) byYear[yr] = []
+    byYear[yr].push(e)
+  })
+  const years = Object.keys(byYear).sort((a, b) => b - a)
+  const currentYear = new Date().getFullYear()
+  const [collapsedYears, setCollapsedYears] = useState(() =>
+    Object.fromEntries(years.filter(y => parseInt(y) < currentYear).map(y => [y, true]))
+  )
+  function toggleYear(yr) {
+    setCollapsedYears(prev => ({ ...prev, [yr]: !prev[yr] }))
+  }
+
+  const unitLabel = asset.interval_type === 'hours' ? 'h' : 'mi'
+
+  function entryIcon(e) {
+    if (e._type === 'usage') return { icon: '⏱', color: 'var(--accent)' }
+    if (!e.task_name) return { icon: '✎', color: 'var(--text-muted)' }
+    if (e.cost) return { icon: '💰', color: '#a0855b' }
+    return { icon: '✓', color: 'var(--status-ok)' }
+  }
+
   return (
     <div>
       {showFreeform && (
@@ -1053,70 +1088,173 @@ function HistoryTab({ asset, logs, onReload }) {
           onClose={() => setShowFreeform(false)}
         />
       )}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 4px' }}>
         <button className="btn btn-primary btn-sm" onClick={() => setShowFreeform(true)}>+ Add Entry</button>
       </div>
-      <div className="table-scroll">
-        {error && <div className="alert alert-error" style={{ margin: '8px 18px' }}>{error}</div>}
-        <table className="data-table">
-          <thead><tr><th>Date</th><th>Task / Description</th><th>By</th><th>Cost</th><th>Note</th><th></th></tr></thead>
-          <tbody>
-            {logs.length === 0
-              ? <tr><td colSpan={6}><div className="empty"><div className="empty-text">No history yet</div></div></td></tr>
-              : logs.map(l => editLog === l.id ? (
-                <tr key={l.id} style={{ background: 'var(--bg-raised)' }}>
-                  <td><input type="date" value={editValues.completed_at} onChange={e => setEditValues(v => ({ ...v, completed_at: e.target.value }))} style={{ fontSize: '12px', padding: '3px 6px', width: '130px' }} /></td>
-                  <td>
-                    {l.task_name
-                      ? <span className="text-muted">{l.task_name}</span>
-                      : <input value={editValues.description} onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))} placeholder="Description…" style={{ fontSize: '12px', padding: '3px 6px', width: '100%' }} />
-                    }
-                  </td>
-                  <td>
-                    <select value={editValues.contractor_id} onChange={e => setEditValues(v => ({ ...v, contractor_id: e.target.value }))} style={{ fontSize: '12px', padding: '3px 6px' }}>
-                      <option value="">— Self —</option>
-                      {contractors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </td>
-                  <td><input type="number" value={editValues.cost} onChange={e => setEditValues(v => ({ ...v, cost: e.target.value }))} placeholder="0.00" style={{ fontSize: '12px', padding: '3px 6px', width: '80px' }} /></td>
-                  <td><input value={editValues.note} onChange={e => setEditValues(v => ({ ...v, note: e.target.value }))} placeholder="Note…" style={{ fontSize: '12px', padding: '3px 6px', width: '100%' }} /></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => saveEdit(l.id)} disabled={saving}>✓</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setEditLog(null)}>✕</button>
+
+      {error && <div className="alert alert-error" style={{ margin: '8px 18px' }}>{error}</div>}
+
+      {allEntries.length === 0 ? (
+        <div className="empty" style={{ padding: '32px' }}>
+          <div className="empty-text">No history yet</div>
+        </div>
+      ) : (
+        <div style={{ padding: '8px 16px 16px' }}>
+          {years.map(yr => (
+            <div key={yr}>
+              {/* Year header — clickable to collapse */}
+              <div
+                onClick={() => toggleYear(yr)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  margin: '16px 0 10px', cursor: 'pointer', userSelect: 'none',
+                }}>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600,
+                  color: 'var(--text-muted)', letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}>
+                  {collapsedYears[yr] ? '▶' : '▼'} {yr}
+                </span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '10px',
+                  color: 'var(--text-muted)',
+                }}>
+                  {byYear[yr].filter(e => e._type === 'completion').length} entries
+                  {byYear[yr].filter(e => e._type === 'completion' && e.cost).reduce((s, e) => s + (e.cost || 0), 0) > 0 &&
+                    ` · $${byYear[yr].filter(e => e._type === 'completion').reduce((s, e) => s + (e.cost || 0), 0).toFixed(0)}`
+                  }
+                </span>
+              </div>
+
+              {/* Timeline entries — hidden when collapsed */}
+              {!collapsedYears[yr] && <div style={{ position: 'relative', paddingLeft: '28px' }}>
+                {/* Vertical line */}
+                <div style={{
+                  position: 'absolute', left: '10px', top: 0, bottom: 0,
+                  width: '1px', background: 'var(--border)',
+                }} />
+
+                {byYear[yr].map((e, i) => {
+                  const { icon, color } = entryIcon(e)
+                  const isEditing = e._type === 'completion' && editLog === e.id
+                  const date = new Date(e._date)
+                  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+                  return (
+                    <div key={`${e._type}-${e.id}`} style={{
+                      position: 'relative',
+                      marginBottom: i === byYear[yr].length - 1 ? 0 : '10px',
+                    }}>
+                      {/* Dot */}
+                      <div style={{
+                        position: 'absolute', left: '-22px', top: '10px',
+                        width: '10px', height: '10px', borderRadius: '50%',
+                        background: 'var(--bg-card)', border: `2px solid ${color}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '6px',
+                      }} />
+
+                      {/* Card */}
+                      <div style={{
+                        background: 'var(--bg-raised)', borderRadius: '6px',
+                        border: '1px solid var(--border)',
+                        padding: isEditing ? '10px 12px' : '8px 12px',
+                      }}>
+                        {isEditing ? (
+                          /* Edit form */
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              <input type="date" value={editValues.completed_at}
+                                onChange={e => setEditValues(v => ({ ...v, completed_at: e.target.value }))}
+                                style={{ fontSize: '12px', padding: '3px 6px' }} />
+                              {!e.task_name && (
+                                <input value={editValues.description}
+                                  onChange={ev => setEditValues(v => ({ ...v, description: ev.target.value }))}
+                                  placeholder="Description…"
+                                  style={{ fontSize: '12px', padding: '3px 6px', flex: 1, minWidth: '120px' }} />
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              <select value={editValues.contractor_id}
+                                onChange={ev => setEditValues(v => ({ ...v, contractor_id: ev.target.value }))}
+                                style={{ fontSize: '12px', padding: '3px 6px' }}>
+                                <option value="">— Self —</option>
+                                {contractors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                              <input type="number" value={editValues.cost}
+                                onChange={ev => setEditValues(v => ({ ...v, cost: ev.target.value }))}
+                                placeholder="Cost"
+                                style={{ fontSize: '12px', padding: '3px 6px', width: '80px' }} />
+                              <input value={editValues.note}
+                                onChange={ev => setEditValues(v => ({ ...v, note: ev.target.value }))}
+                                placeholder="Note…"
+                                style={{ fontSize: '12px', padding: '3px 6px', flex: 1, minWidth: '120px' }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button className="btn btn-primary btn-sm" onClick={() => saveEdit(e.id)} disabled={saving}>✓ Save</button>
+                              <button className="btn btn-ghost btn-sm" onClick={() => setEditLog(null)}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Display row */
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                            <span style={{ fontSize: '13px', minWidth: '16px', marginTop: '1px' }}>{icon}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                                  {e._type === 'usage'
+                                    ? `${e.value != null ? e.value.toLocaleString() : '—'} ${unitLabel}`
+                                    : e.task_name || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{e.description || 'Manual entry'}</span>
+                                  }
+                                </span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)' }}>{dateStr}</span>
+                              </div>
+                              {e._type === 'completion' && (
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                  {(e.user_display_name || e.contractor_name) && (
+                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                      {e.contractor_name ? `🔧 ${e.contractor_name}` : e.user_display_name}
+                                    </span>
+                                  )}
+                                  {e.cost > 0 && (
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#a0855b' }}>
+                                      ${e.cost.toFixed(2)}
+                                    </span>
+                                  )}
+                                  {e.usage_value != null && (
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent)' }}>
+                                      @ {e.usage_value.toLocaleString()} {unitLabel}
+                                    </span>
+                                  )}
+                                  {e.note && (
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>{e.note}</span>
+                                  )}
+                                </div>
+                              )}
+                              {e._type === 'usage' && e.note && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>{e.note}</div>
+                              )}
+                            </div>
+                            {e._type === 'completion' && (
+                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                <button className="btn btn-ghost btn-sm" onClick={() => startEdit(e)} title="Edit" style={{ padding: '2px 6px' }}>✎</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => deleteEntry(e.id)} style={{ color: 'var(--status-overdue)', padding: '2px 6px' }} title="Delete">✕</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ) : (
-                <tr key={l.id}>
-                  <td className="mono">{formatDate(l.completed_at)}</td>
-                  <td>
-                    {l.task_name
-                      ? l.task_name
-                      : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{l.description || 'Manual entry'}</span>
-                    }
-                  </td>
-                  <td className="text-secondary">{l.user_display_name || l.contractor_name || '—'}</td>
-                  <td className="mono">{l.cost ? `$${l.cost.toFixed(2)}` : '—'}</td>
-                  <td className="text-muted" style={{ fontSize: '12px' }}>
-                    {l.note || '—'}
-                    {l.usage_value != null && (
-                      <span style={{ marginLeft: l.note ? '6px' : 0, fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
-                        @ {l.usage_value.toLocaleString()} {l.interval_type === 'hours' ? 'h' : 'mi'}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => startEdit(l)} title="Edit">✎</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => deleteEntry(l.id)} style={{ color: 'var(--status-overdue)' }} title="Delete">✕</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+                  )
+                })}
+              </div>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1317,7 +1455,7 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
 
       {/* Expanded section */}
       {open && (
-        <div className="asset-panel-body" style={{ background: 'var(--bg-raised)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ background: 'var(--bg-raised)', borderTop: '1px solid var(--border)' }}>
           <div className="tabs" style={{ paddingLeft: '18px' }}>
             {['tasks', 'parts', 'history', 'spares', 'notes'].map(t => (
               <button key={t} className={`tab ${activeTab === t ? 'active' : ''}`}
