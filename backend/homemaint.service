@@ -1,0 +1,33 @@
+[Unit]
+Description=HomeMaint - Home & Property Maintenance Tracker
+After=network.target
+
+[Service]
+Type=simple
+User=homemaint
+WorkingDirectory=/opt/homemaint
+ExecStart=/opt/homemaint/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+Restart=on-failure
+RestartSec=5
+
+# Data location — change to your NAS mount if preferred
+Environment=HOMEMAINT_DB_PATH=/opt/homemaint/data/homemaint.db
+
+# CHANGE THIS — generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+Environment=HOMEMAINT_SECRET=8055d96f54e5016ff7fecb681de3b63d6587c6ac71aa864f58d8031de39ce6cb
+
+# MQTT broker (your HA instance)
+Environment=MQTT_BROKER=192.168.1.52
+Environment=MQTT_PORT=1883
+Environment=MQTT_USERNAME=
+Environment=MQTT_PASSWORD=
+
+# Token expiry in minutes (default 1440 = 24h)
+Environment=TOKEN_EXPIRE_MINUTES=1440
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homemaint
+
+[Install]
+WantedBy=multi-user.target

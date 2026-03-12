@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Database — NEVER commit real data
+*.db
+*.db-shm
+*.db-wal
+*.db.pre_restore
+
+# Environment / secrets
+.env
+*.env
+.env.local
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Uploads (user data)
+uploads/
+
+# Backup files
+*.zip
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/

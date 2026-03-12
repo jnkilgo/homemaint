@@ -1,0 +1,66 @@
+# HomeMaint — Home Assistant Automation
+# 
+# Add this to your automations.yaml or paste into the HA UI
+# (Settings → Automations → Create → Edit in YAML)
+#
+# Replace "mobile_app_your_phone" with your actual notify service name.
+# Find yours at: Developer Tools → Services → search "notify.mobile_app_"
+
+alias: HomeMaint Push Notifications
+description: Forward HomeMaint task alerts to mobile app
+trigger:
+  - platform: mqtt
+    topic: homemaint/notify
+    id: homemaint_notify
+
+condition: []
+
+action:
+  - variables:
+      payload: "{{ trigger.payload_json }}"
+      priority: "{{ trigger.payload_json.priority | default('normal') }}"
+
+  - choose:
+      # Urgent notifications
+      - conditions:
+          - condition: template
+            value_template: "{{ priority == 'urgent' }}"
+        sequence:
+          - service: notify.mobile_app_your_phone
+            data:
+              title: "{{ payload.title }}"
+              message: "{{ payload.message }}"
+              data:
+                tag: "{{ payload.tag }}"
+                push:
+                  interruption-level: critical
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
+
+      # High priority notifications
+      - conditions:
+          - condition: template
+            value_template: "{{ priority == 'high' }}"
+        sequence:
+          - service: notify.mobile_app_your_phone
+            data:
+              title: "{{ payload.title }}"
+              message: "{{ payload.message }}"
+              data:
+                tag: "{{ payload.tag }}"
+                push:
+                  interruption-level: time-sensitive
+
+      # Normal notifications (default)
+    default:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "{{ payload.title }}"
+          message: "{{ payload.message }}"
+          data:
+            tag: "{{ payload.tag }}"
+
+mode: queued
+max: 10
