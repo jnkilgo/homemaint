@@ -41,7 +41,8 @@ async function req(method, path, body) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Request failed')
+    const detail = Array.isArray(err.detail) ? err.detail.map(e => e.msg || JSON.stringify(e)).join(', ') : (err.detail || 'Request failed')
+    throw new Error(detail)
   }
 
   if (res.status === 204) return null
@@ -86,21 +87,35 @@ export const api = {
   },
   createTask: (data) => req('POST', '/tasks/', data),
   updateTask: (id, data) => req('PUT', `/tasks/${id}`, data),
+  reorderTasks: (items) => req('POST', '/tasks/reorder', items),
   deleteTask: (id) => req('DELETE', `/tasks/${id}`),
 
   // Parts
   getAssetParts: (assetId) => req('GET', `/parts/?asset_id=${assetId}`),
   getTaskParts: (taskId) => req('GET', `/task-parts/?task_id=${taskId}`),
-  createPart: (data) => req('POST', `/parts/`, data),
+  createPart: (data) => {
+    const { asset_id, task_id, ...body } = data
+    const q = new URLSearchParams()
+    if (asset_id) q.set('asset_id', asset_id)
+    if (task_id) q.set('task_id', task_id)
+    return req('POST', `/parts/?${q.toString()}`, body)
+  },
   updatePart: (id, data) => req('PUT', `/parts/${id}`, data),
+  updatePartQty: (id, qty) => req('PATCH', `/parts/${id}/qty`, { qty }),
+  snoozeTask: (id, snoozed_until) => req('PATCH', `/tasks/${id}/snooze`, { snoozed_until }),
   deletePart: (id) => req('DELETE', `/parts/${id}`),
 
   // Completion logs
+  getUsageLogs: (assetId) => req('GET', `/assets/${assetId}/usage_logs`),
+  deleteUsageLog: (assetId, logId) => req('DELETE', `/assets/${assetId}/usage_logs/${logId}`),
   getLogs: (params = {}) => {
     const q = new URLSearchParams(params).toString()
     return req('GET', `/logs/?${q}`)
   },
   logCompletion: (data) => req('POST', '/logs/', data),
+  createLog: (data) => req('POST', `/logs/`, data),
+  deleteLog: (id) => req('DELETE', `/logs/${id}`),
+  updateLog: (id, data) => req('PATCH', `/logs/${id}`, data),
   getAnnualSummary: (params = {}) => {
     const q = new URLSearchParams(params).toString()
     return req('GET', `/logs/summary/annual?${q}`)
@@ -123,6 +138,9 @@ export const api = {
   createContractor: (data) => req('POST', '/contractors/', data),
   updateContractor: (id, data) => req('PUT', `/contractors/${id}`, data),
   deleteContractor: (id) => req('DELETE', `/contractors/${id}`),
+  getAssetContractors: (assetId) => req('GET', `/contractors/assets/${assetId}/contractors`),
+  addAssetContractor: (assetId, data) => req('POST', `/contractors/assets/${assetId}/contractors`, data),
+  removeAssetContractor: (assetId, contractorId) => req('DELETE', `/contractors/assets/${assetId}/contractors/${contractorId}`),
 
   // Notes
   getNotes: (assetId) => req('GET', `/notes/?asset_id=${assetId}`),
@@ -149,6 +167,9 @@ export const api = {
   // App Settings
   getNotificationSettings: () => req('GET', '/settings/notifications'),
   updateNotificationSettings: (data) => req('PUT', '/settings/notifications', data),
+  getUsageReminderSettings: () => req('GET', '/settings/usage-reminders'),
+  updateUsageReminderSettings: (data) => req('PUT', '/settings/usage-reminders', data),
+  getUsageRemindersDue: () => req('GET', '/settings/usage-reminders/due'),
 
   // Users
   getUsers: () => req('GET', '/users/'),

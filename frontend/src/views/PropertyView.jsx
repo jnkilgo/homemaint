@@ -775,8 +775,8 @@ function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAd
               </div>
             )}
             {!collapsed && (
-              <div style={{ overflowX: 'auto', background: 'var(--bg-card)', borderRadius: '0 0 var(--radius) var(--radius)' }}>
-              <table className="data-table" style={{ width: '100%', minWidth: '520px' }}>
+              <div style={{ overflowX: 'auto', background: 'var(--bg-card)', borderRadius: '0 0 var(--radius) var(--radius)', WebkitOverflowScrolling: 'touch' }}>
+              <table className="data-table" style={{ width: '100%', minWidth: '520px', background: 'var(--bg-card)' }}>
                 <thead><tr>
                   <th style={{ width: '24px' }}></th>
                   <th>Task</th><th>Schedule</th><th>Status</th><th>Due</th><th>Last Done</th><th></th>
@@ -1093,7 +1093,7 @@ function HistoryTab({ asset, logs, onReload }) {
                   <td>
                     {l.task_name
                       ? l.task_name
-                      : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>📝 {l.description || 'Manual entry'}</span>
+                      : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{l.description || 'Manual entry'}</span>
                     }
                   </td>
                   <td className="text-secondary">{l.user_display_name || l.contractor_name || '—'}</td>
@@ -1317,7 +1317,7 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
 
       {/* Expanded section */}
       {open && (
-        <div style={{ background: 'var(--bg-raised)', borderTop: '1px solid var(--border)' }}>
+        <div className="asset-panel-body" style={{ background: 'var(--bg-raised)', borderTop: '1px solid var(--border)' }}>
           <div className="tabs" style={{ paddingLeft: '18px' }}>
             {['tasks', 'parts', 'history', 'spares', 'notes'].map(t => (
               <button key={t} className={`tab ${activeTab === t ? 'active' : ''}`}

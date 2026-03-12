@@ -181,6 +181,22 @@ export default function App() {
   function handleLogout() { clearToken(); setAuthed(false); setUser(null) }
 
   const [jumpToAssetId, setJumpToAssetId] = useState(null)
+  const [usageReminders, setUsageReminders] = useState([])
+  const [showReminderPopup, setShowReminderPopup] = useState(false)
+
+  // Check usage reminders once per session after login
+  useEffect(() => {
+    if (!authed) return
+    const checked = sessionStorage.getItem('usage_reminders_checked')
+    if (checked) return
+    sessionStorage.setItem('usage_reminders_checked', '1')
+    api.getUsageRemindersDue().then(due => {
+      if (due.length > 0) {
+        setUsageReminders(due)
+        setShowReminderPopup(true)
+      }
+    }).catch(() => {})
+  }, [authed])
 
   function navigate(v, propId, assetId) {
     setView(v)
@@ -197,6 +213,43 @@ export default function App() {
   return (
     <ErrorBoundary>
     <div className="app-shell">
+      {showReminderPopup && (
+        <div className="modal-overlay" onClick={() => setShowReminderPopup(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h3 className="modal-title">⏱ Usage Log Reminders</h3>
+              <button className="modal-close" onClick={() => setShowReminderPopup(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                The following assets haven't had usage logged recently:
+              </p>
+              {usageReminders.map(r => (
+                <div key={r.asset_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: '13px' }}>{r.asset_name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {r.property_name} · {r.days_since} days since last log · {r.current_value?.toLocaleString()} {r.tracks}
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      setShowReminderPopup(false)
+                      navigate('property', properties.find(p => p.name === r.property_name)?.id, r.asset_id)
+                    }}
+                  >
+                    Log now →
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setShowReminderPopup(false)}>Dismiss</button>
+            </div>
+          </div>
+        </div>
+      )}
       <Sidebar
         collapsed={collapsed} setCollapsed={setCollapsed}
         view={view} setView={setView}

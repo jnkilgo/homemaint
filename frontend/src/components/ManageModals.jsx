@@ -24,7 +24,6 @@ const INTERVAL_TYPES = [
   { value: 'hours',    label: 'Hours (usage)' },
   { value: 'miles',    label: 'Miles (usage)' },
   { value: 'seasonal', label: 'Seasonal' },
-  { value: 'manual',   label: 'Manual / On-demand' },
 ]
 const SEASONS = ['spring','summer','fall','winter']
 
@@ -46,7 +45,7 @@ function SectionLabel({ children }) {
   )
 }
 
-export function PropertyModal({ property, onClose, onSaved, onDelete }) {
+export function PropertyModal({ property, onClose, onSaved }) {
   const isEdit = !!property
   const { values, set, bind } = useForm({
     name:          property?.name || '',
@@ -62,13 +61,13 @@ export function PropertyModal({ property, onClose, onSaved, onDelete }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }
     setLoading(true); setError('')
     try {
-      const data = { ...values, purchase_price: values.purchase_price ? parseFloat(values.purchase_price) : null, purchase_date: values.purchase_date || null }
+      function fullDate(v) { return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null }
+      const data = { ...values, purchase_price: values.purchase_price ? parseFloat(values.purchase_price) : null, purchase_date: fullDate(values.purchase_date) }
       const result = isEdit ? await api.updateProperty(property.id, data) : await api.createProperty(data)
       onSaved(result)
     } catch (e) { setError(e.message) }
@@ -77,16 +76,6 @@ export function PropertyModal({ property, onClose, onSaved, onDelete }) {
 
   return (
     <Modal title={isEdit ? `Edit: ${property.name}` : 'Add Property'} onClose={onClose} footer={<>
-      {isEdit && !confirmDelete && (
-        <button className="btn btn-ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--status-overdue)', marginRight: 'auto' }}>✕ Delete Property</button>
-      )}
-      {confirmDelete && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: 'auto' }}>
-          <span style={{ fontSize: '12px', color: 'var(--status-overdue)' }}>Delete all assets & tasks?</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
-          <button className="btn btn-ghost btn-sm" onClick={onDelete} style={{ color: 'var(--status-overdue)' }}>Confirm Delete</button>
-        </div>
-      )}
       <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
       <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Property'}</button>
     </>}>
@@ -329,41 +318,41 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
     warranty_expires:       asset?.warranty_expires || '',
     current_hours:          asset?.current_hours || '',
     current_miles:          asset?.current_miles || '',
+    usage_reminder_days:    asset?.usage_reminder_days || '',
     icon:                   asset?.icon || '🔧',
-    property_id:            asset?.property_id || propertyId,
   })
   const [customFields, setCustomFields] = useState(asset?.custom_fields || {})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showAI, setShowAI] = useState(false)
   const [aiEnabled, setAiEnabled] = useState(false)
-  const [properties, setProperties] = useState([])
 
   useEffect(() => {
     api.getAISettings().then(s => setAiEnabled(s.ai_enabled)).catch(() => {})
-    if (isEdit) api.getProperties().then(setProperties).catch(() => {})
   }, [])
+
+  function fullDate(v) { return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null }
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }
     setLoading(true); setError('')
     try {
+      const my = parseInt(values.model_year)
       const data = {
         ...values,
-        property_id:            parseInt(values.property_id),
-        model_year:             values.model_year ? parseInt(values.model_year) : null,
-        expected_lifespan_years:values.expected_lifespan_years ? parseInt(values.expected_lifespan_years) : null,
-        purchase_date:          values.purchase_date || null,
+        property_id:            propertyId,
+        model_year:             values.model_year && !isNaN(my) ? my : null,
+        expected_lifespan_years:values.expected_lifespan_years ? parseFloat(values.expected_lifespan_years) : null,
+        purchase_date:          fullDate(values.purchase_date),
         purchase_price:         values.purchase_price ? parseFloat(values.purchase_price) : null,
         current_hours:          values.current_hours ? parseFloat(values.current_hours) : null,
         current_miles:          values.current_miles ? parseFloat(values.current_miles) : null,
-        install_date:           values.install_date || null,
-        warranty_expires:       values.warranty_expires || null,
+        usage_reminder_days:    values.usage_reminder_days ? parseInt(values.usage_reminder_days) : null,
+        install_date:           fullDate(values.install_date),
+        warranty_expires:       fullDate(values.warranty_expires),
         custom_fields:          Object.keys(customFields).length > 0 ? customFields : null,
       }
-      console.log('Asset submit data:', JSON.stringify({ property_id: data.property_id, name: data.name }))
       const result = isEdit ? await api.updateAsset(asset.id, data) : await api.createAsset(data)
-      console.log('Asset save result:', JSON.stringify({ property_id: result?.property_id, name: result?.name }))
       onSaved(result)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
@@ -384,13 +373,6 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
       {error && <div className="alert alert-error">{error}</div>}
       <IconPicker value={values.icon} onChange={v => set('icon', v)} />
       <FieldRow label="Asset name *"><input {...bind('name')} placeholder="HVAC System" /></FieldRow>
-      {isEdit && properties.length > 1 && (
-        <FieldRow label="Property">
-          <select value={parseInt(values.property_id)} onChange={e => set('property_id', parseInt(e.target.value))}>
-            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </FieldRow>
-      )}
       <div className="form-row">
         <FieldRow label="Make"><input {...bind('make')} placeholder="Carrier" /></FieldRow>
         <FieldRow label="Model"><input {...bind('model')} placeholder="Infinity 24" /></FieldRow>
@@ -403,7 +385,7 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
       </div>
       <div className="form-row">
         <FieldRow label="Location"><input {...bind('location_on_property')} placeholder="Utility closet" /></FieldRow>
-        <FieldRow label="Serial number"><input {...bind('serial_number')} /></FieldRow>
+        <FieldRow label="Serial number"><input type="text" {...bind('serial_number')} /></FieldRow>
       </div>
       <SectionLabel>Age and Warranty</SectionLabel>
       <div className="form-row">
@@ -419,8 +401,24 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
         <FieldRow label="Expected lifespan (years)"><input type="number" {...bind('expected_lifespan_years')} placeholder="15" /></FieldRow>
       </div>
       <div className="form-row">
-        <FieldRow label="Warranty expires"><input type="date" {...bind('warranty_expires')} /></FieldRow>
-        <FieldRow label="Purchase date"><input type="date" {...bind('purchase_date')} /></FieldRow>
+        <FieldRow label="Warranty expires">
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input type="date" {...bind('warranty_expires')} style={{ flex: 1 }} />
+            {values.warranty_expires && (
+              <button onClick={() => set('warranty_expires', '')} title="Clear date"
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', flexShrink: 0 }}>x</button>
+            )}
+          </div>
+        </FieldRow>
+        <FieldRow label="Purchase date">
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input type="date" {...bind('purchase_date')} style={{ flex: 1 }} />
+            {values.purchase_date && (
+              <button onClick={() => set('purchase_date', '')} title="Clear date"
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', flexShrink: 0 }}>x</button>
+            )}
+          </div>
+        </FieldRow>
       </div>
       <div className="form-row">
         <FieldRow label="Purchase price"><input type="number" {...bind('purchase_price')} placeholder="0.00" /></FieldRow>
@@ -430,6 +428,11 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
       <div className="form-row">
         <FieldRow label="Hours at baseline" hint="Odometer when you started tracking"><input type="number" {...bind('current_hours')} placeholder="348" /></FieldRow>
         <FieldRow label="Miles at baseline" hint="Odometer when you started tracking"><input type="number" {...bind('current_miles')} /></FieldRow>
+        {(values.current_hours || values.current_miles) && (
+          <FieldRow label="Usage reminder (days)" hint="Leave blank to use global default (90 days)">
+            <input type="number" {...bind('usage_reminder_days')} placeholder="90" min="1" max="365" />
+          </FieldRow>
+        )}
       </div>
       <SectionLabel>Custom Fields</SectionLabel>
       <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>Store any specs: oil type, belt size, filter part #, tire size, etc.</div>
@@ -486,13 +489,13 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }
-    if (values.interval_type !== 'seasonal' && values.interval_type !== 'manual' && !values.interval) { setError('Interval amount is required'); return }
+    if (values.interval_type !== 'seasonal' && !values.interval) { setError('Interval amount is required'); return }
     setLoading(true); setError('')
     try {
       const data = {
         asset_id: assetId, name: values.name, description: values.description || null,
         interval_type: values.interval_type,
-        interval: (values.interval_type !== 'seasonal' && values.interval_type !== 'manual') ? parseInt(values.interval) : null,
+        interval: values.interval_type !== 'seasonal' ? parseInt(values.interval) : null,
         season: values.interval_type === 'seasonal' ? values.season : null,
         advance_warning_days: parseInt(values.advance_warning_days),
         is_critical: values.is_critical,
@@ -525,12 +528,12 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
     </>}>
       {error && <div className="alert alert-error">{error}</div>}
       <FieldRow label="Task name *"><input {...bind('name')} placeholder="Air Filter Replacement" /></FieldRow>
-      <FieldRow label="Description"><textarea {...bind('description')} placeholder="Optional task description…" rows={2} style={{ resize: 'vertical' }} /></FieldRow>
+      <FieldRow label="Description"><input {...bind('description')} placeholder="20x25x4 media filter" /></FieldRow>
       <div className="form-row">
         <FieldRow label="Schedule type">
           <select {...bind('interval_type')}>{INTERVAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select>
         </FieldRow>
-        {values.interval_type === 'manual' ? null : values.interval_type === 'seasonal' ? (
+        {values.interval_type === 'seasonal' ? (
           <FieldRow label="Season">
             <select {...bind('season')}>{SEASONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}</select>
           </FieldRow>
@@ -538,11 +541,9 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
           <FieldRow label={`Every (${values.interval_type})`}><input type="number" {...bind('interval')} placeholder="3" min="1" /></FieldRow>
         )}
       </div>
-      {values.interval_type !== 'manual' && (
-        <FieldRow label="Advance warning" hint="Days before due to show as Due Soon">
-          <input type="number" {...bind('advance_warning_days')} min="1" max="365" />
-        </FieldRow>
-      )}
+      <FieldRow label="Advance warning" hint="Days before due to show as Due Soon">
+        <input type="number" {...bind('advance_warning_days')} min="1" max="365" />
+      </FieldRow>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', borderRadius: 'var(--radius)', background: values.is_critical ? 'var(--status-overdue-bg)' : 'var(--bg-raised)', border: `1px solid ${values.is_critical ? 'var(--status-overdue)' : 'var(--border)'}`, transition: 'all 0.15s', marginTop: '4px', marginBottom: '16px' }}>
         <input type="checkbox" id="is_critical" checked={values.is_critical} onChange={e => set('is_critical', e.target.checked)} style={{ width: 'auto', marginTop: '2px', flexShrink: 0 }} />
         <div>
@@ -633,7 +634,7 @@ export function ComponentModal({ component, assetId, onClose, onSaved }) {
     try {
       const data = {
         name: values.name,
-        installed_date: values.installed_date || null,
+        installed_date: values.installed_date && /^\d{4}-\d{2}-\d{2}$/.test(values.installed_date) ? values.installed_date : null,
         expected_lifespan_years: values.expected_lifespan_years ? parseFloat(values.expected_lifespan_years) : null,
         notes: values.notes || null,
       }

@@ -56,9 +56,6 @@ function ContractorCard({ c, onHistory, onEdit, onDelete, onShare }) {
 
   function callPhone(e, phone) {
     e.stopPropagation()
-    if (window.confirm(`Call ${phone}?`)) {
-      window.location.href = `tel:${phone}`
-    }
   }
 
   return (

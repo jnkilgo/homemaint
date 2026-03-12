@@ -404,6 +404,67 @@ function AISettings() {
   )
 }
 
+function UsageReminderSettings() {
+  const [settings, setSettings] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    api.getUsageReminderSettings().then(setSettings)
+  }, [])
+
+  async function update(patch) {
+    const updated = { ...settings, ...patch }
+    setSettings(updated)
+    setSaving(true); setSaved(false)
+    try {
+      const result = await api.updateUsageReminderSettings(updated)
+      setSettings(result)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally { setSaving(false) }
+  }
+
+  if (!settings) return <div style={{ padding: '16px' }}><LoadingSpinner /></div>
+
+  return (
+    <div>
+      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.6 }}>
+        Get reminded when assets that track hours or miles haven't had usage logged in a while.
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Default reminder interval (days)</label>
+        <input
+          type="number"
+          className="form-input"
+          value={settings.usage_reminder_global_days}
+          onChange={e => setSettings(s => ({ ...s, usage_reminder_global_days: parseInt(e.target.value) || 90 }))}
+          min="1"
+          max="365"
+          style={{ maxWidth: '120px' }}
+        />
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          Per-asset overrides can be set in the asset edit panel. Leave blank on an asset to use this default.
+        </div>
+      </div>
+
+      <Toggle
+        checked={settings.usage_reminder_ha_notify}
+        onChange={v => update({ usage_reminder_ha_notify: v })}
+        label="Send HA push notification"
+        sub="Fire a Home Assistant notification when an asset is overdue for usage logging"
+      />
+
+      <div style={{ marginTop: '12px' }}>
+        <button className="btn btn-primary btn-sm" onClick={() => update({})} disabled={saving}>
+          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function BackupRestore() {
   const [restoring, setRestoring] = useState(false)
   const [restoreFile, setRestoreFile] = useState(null)
@@ -582,6 +643,15 @@ export default function SettingsView({ onLogout, properties = [] }) {
           <div className="card-header"><span className="card-title">🤖 AI Assistant</span></div>
           <div className="card-body">
             <AISettings />
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="card" style={{ marginBottom: '20px' }}>
+          <div className="card-header"><span className="card-title">Usage Reminders</span></div>
+          <div className="card-body">
+            <UsageReminderSettings />
           </div>
         </div>
       )}
