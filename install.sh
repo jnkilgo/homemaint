@@ -108,10 +108,13 @@ section "Initializing database"
 
 venv/bin/python <<EOF
 import sys
-sys.path.append("$INSTALL_DIR")
+sys.path.insert(0, "$INSTALL_DIR")
 
 from app.database import engine, Base
 import app.models
+
+# force model registration
+_ = app.models
 
 Base.metadata.create_all(bind=engine)
 
@@ -129,6 +132,10 @@ conn=sqlite3.connect(db)
 cur=conn.cursor()
 
 pw=bcrypt.hashpw(b"changeme", bcrypt.gensalt()).decode()
+
+cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+if cur.fetchone() is None:
+    raise SystemExit("ERROR: users table not created")
 
 cur.execute("""
 INSERT OR IGNORE INTO users (username,display_name,password_hash,role)
