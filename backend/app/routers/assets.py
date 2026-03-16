@@ -15,7 +15,7 @@ def _enrich_asset(asset: models.Asset) -> schemas.AssetOut:
     out = schemas.AssetOut.model_validate(asset)
     overdue = sum(1 for t in asset.tasks if get_task_status(t, asset)[0] == "overdue")
     out.task_count = len(asset.tasks)
-    due_soon = sum(1 for t in asset.tasks if get_task_status(t, asset)[0] == "due_soon")
+    due_soon = sum(1 for t in asset.tasks if get_task_status(t, asset)[0] in ("due_soon", "snoozed"))
     out.overdue_count = overdue
     out.due_soon_count = due_soon
 
