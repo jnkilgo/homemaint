@@ -561,7 +561,7 @@ function SparesTab({ asset }) {
 
 const UNGROUPED = '__ungrouped__'
 
-function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAdd, onReordered }) {
+function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAdd, onReordered, statusFilter }) {
   const [tasks, setTasks] = useState(() => [...initialTasks].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
   const [collapsedGroups, setCollapsedGroups] = useState({})
   const [editingGroup, setEditingGroup] = useState(null)
@@ -705,7 +705,7 @@ function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAd
         </div>
       )}
       {allGroups.map(group => {
-        const groupTasks = tasks.filter(t => (t.task_group || UNGROUPED) === group)
+        const groupTasks = tasks.filter(t => (t.task_group || UNGROUPED) === group).filter(t => { if (!statusFilter) return true; if (statusFilter === 'overdue') return t.status === 'overdue'; return ['due_soon','snoozed'].includes(t.status); })
         const isExtra = extraGroups.includes(group) && groupTasks.length === 0
         const collapsed = collapsedGroups[group]
         const isUngrouped = group === UNGROUPED
@@ -1413,7 +1413,7 @@ function AssetContractorsTab({ asset }) {
   )
 }
 
-function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onToggle, onSnoozeDone, taskRefreshKey }) {
+function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onToggle, onSnoozeDone, taskRefreshKey, statusFilter }) {
   const open = isOpen ?? false
   const [tasks, setTasks] = useState([])
   const [tasksLoaded, setTasksLoaded] = useState(false)
@@ -1537,6 +1537,7 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
               onSnooze={onSnooze}
               onAdd={() => setAddTask(true)}
               onReordered={loadTasks}
+              statusFilter={statusFilter}
             />
           )}
 
@@ -1913,6 +1914,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
               onDelete={a => setDeleteAsset(a)}
               onSnooze={t => setSnoozeTask({ task: t, assetId: asset.id })}
               taskRefreshKey={assetTaskRefresh[asset.id] || 0}
+              statusFilter={filter}
             />
             </div>
           ))

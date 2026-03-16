@@ -119,7 +119,7 @@ export default function PaintView({ propertyId, properties }) {
 
       {records.length === 0
         ? <div className="empty"><div className="empty-icon">🎨</div><div className="empty-text">No paint records yet</div></div>
-        : <div className="card">
+        : <div className="card"><div className="table-scroll">
             <table className="data-table">
               <thead><tr>
                 <th>Swatch</th><th>Room / Surface</th><th>Color</th><th>Code</th><th>Sheen</th><th>Painted</th><th>By</th><th></th>
@@ -150,7 +150,7 @@ export default function PaintView({ propertyId, properties }) {
                 })}
               </tbody>
             </table>
-          </div>
+          </div></div>
       }
 
       {(showForm || editRecord) && (

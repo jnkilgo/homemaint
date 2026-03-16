@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 export function StatusBadge({ status }) {
-  const labels = { ok: 'OK', due_soon: 'Due Soon', overdue: 'Overdue', unknown: 'Unknown' }
+  const labels = { ok: 'OK', due_soon: 'Due Soon', overdue: 'Overdue', unknown: 'Unknown', snoozed: 'Snoozed' }
   return <span className={`badge badge-${status}`}>{labels[status] || status}</span>
 }
 

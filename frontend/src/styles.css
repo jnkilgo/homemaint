@@ -468,3 +468,5 @@ input:focus, textarea:focus, select:focus {
 
 /* Contain horizontal overflow within asset panels */
 .asset-panel-body { overflow-x: hidden; }
+
+.badge-snoozed { background: var(--status-soon-bg); color: var(--status-soon); border: 1px solid var(--status-soon); }
