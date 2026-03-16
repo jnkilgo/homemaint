@@ -110,8 +110,9 @@ def run_escalation():
                     if status == "overdue":   prop_overdue += 1
                     if status == "due_soon":  prop_due_soon += 1
 
-            # Property summary
+            # Property summary + per-property notify discovery
             mqtt_manager.register_property_sensor(prop.id, prop.name)
+            mqtt_manager.register_property_notify_sensor(prop.id, prop.name)
             mqtt_manager.publish_property_summary(prop.id, prop_overdue, prop_due_soon, prop_tasks)
 
             global_overdue  += prop_overdue
@@ -146,6 +147,7 @@ def _handle_notification(task, asset, prop, status, days_until_due, escalation_l
                 message=f"{prop_label} · Due in {days_until_due} day{'s' if days_until_due != 1 else ''}",
                 tag=f"hm_task_{task.id}",
                 priority="normal",
+                property_id=prop.id,
             )
 
     elif escalation_level == 1:
@@ -155,6 +157,7 @@ def _handle_notification(task, asset, prop, status, days_until_due, escalation_l
                 message=f"{prop_label} · {abs(days_until_due or 0)} days overdue",
                 tag=f"hm_task_{task.id}",
                 priority="normal",
+                property_id=prop.id,
             )
 
     elif escalation_level == 2:
@@ -164,6 +167,7 @@ def _handle_notification(task, asset, prop, status, days_until_due, escalation_l
                 message=f"{prop_label} · {abs(days_until_due or 0)} days overdue — needs attention",
                 tag=f"hm_task_{task.id}",
                 priority="normal",
+                property_id=prop.id,
             )
 
     elif escalation_level == 3:
@@ -173,7 +177,78 @@ def _handle_notification(task, asset, prop, status, days_until_due, escalation_l
                 message=f"{prop_label} · {abs(days_until_due or 0)} days overdue — action required",
                 tag=f"hm_task_{task.id}",
                 priority="normal",
+                property_id=prop.id,
             )
+
+
+def run_usage_reminders():
+    """Daily job — fire HA notifications for assets overdue for usage logging."""
+    from app.routers.settings import get_setting
+
+    db = SessionLocal()
+    try:
+        ha_notify     = get_setting(db, "usage_reminder_ha_notify") == "true"
+        notif_enabled = get_setting(db, "notifications_enabled") == "true"
+        if not ha_notify or not notif_enabled:
+            return
+
+        from datetime import datetime, timedelta
+        global_days = int(get_setting(db, "usage_reminder_global_days") or 90)
+        assets = db.query(models.Asset).filter(
+            (models.Asset.current_hours != None) | (models.Asset.current_miles != None)
+        ).all()
+
+        now = datetime.utcnow()
+        for asset in assets:
+            threshold_days = asset.usage_reminder_days or global_days
+
+            # Skip if already notified within this threshold window
+            if asset.usage_reminder_sent_at:
+                days_since_notify = (now - asset.usage_reminder_sent_at).days
+                if days_since_notify < threshold_days:
+                    continue
+
+            # Check if all tasks snoozed
+            tasks = db.query(models.Task).filter(models.Task.asset_id == asset.id).all()
+            if tasks and all(
+                t.snoozed_until and t.snoozed_until > now.date()
+                for t in tasks if t.snoozed_until
+            ) and len([t for t in tasks if t.snoozed_until]) == len(tasks):
+                continue
+
+            # Check last usage log
+            latest = db.query(models.UsageLog)\
+                .filter(models.UsageLog.asset_id == asset.id)\
+                .order_by(models.UsageLog.recorded_at.desc())\
+                .first()
+
+            last_logged = latest.recorded_at if latest else asset.created_at
+            days_since = (now - last_logged).days
+
+            if days_since >= threshold_days:
+                prop = db.query(models.Property).filter(models.Property.id == asset.property_id).first()
+                prop_name = prop.name if prop else ""
+                prop_id   = prop.id if prop else None
+                tracks  = "hours" if asset.current_hours is not None else "miles"
+                current = asset.current_hours if asset.current_hours is not None else asset.current_miles
+
+                mqtt_manager.send_mobile_notification(
+                    title=f"Usage Log Reminder — {asset.name}",
+                    message=f"{asset.name} ({prop_name}) hasn't had {tracks} logged in {days_since} days. Current: {current:,.0f} {tracks}.",
+                    priority="low",
+                    tag=f"usage_reminder_{asset.id}",
+                    property_id=prop_id,
+                )
+
+                # Mark sent
+                asset.usage_reminder_sent_at = now
+                db.commit()
+                logger.info(f"Usage reminder sent for asset {asset.id} ({asset.name})")
+
+    except Exception as e:
+        logger.error(f"Usage reminder job error: {e}")
+    finally:
+        db.close()
 
 
 def start_scheduler():
@@ -198,6 +273,16 @@ def start_scheduler():
         trigger=DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(seconds=30)),
         id="escalation_startup",
         name="Startup escalation run",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Run usage reminders daily at 9am UTC
+    scheduler.add_job(
+        run_usage_reminders,
+        trigger=IntervalTrigger(hours=24),
+        id="usage_reminders",
+        name="Usage Log Reminders",
         replace_existing=True,
         max_instances=1,
     )

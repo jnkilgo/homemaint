@@ -18,7 +18,7 @@ def _property_counts(prop: models.Property):
             status, _, _ = get_task_status(task, asset)
             if status == "overdue":
                 overdue += 1
-            elif status == "due_soon":
+            elif status in ("due_soon", "snoozed"):
                 due_soon += 1
     return overdue, due_soon
 
@@ -114,7 +114,7 @@ def global_dashboard(db: Session = Depends(get_db), _=Depends(get_current_user))
                 )
                 if status == "overdue":
                     overdue_tasks.append(item)
-                elif status == "due_soon":
+                elif status in ("due_soon", "snoozed"):
                     due_soon_tasks.append(item)
 
     overdue_tasks.sort(key=lambda x: x.days_until_due or 0)

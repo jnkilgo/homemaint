@@ -39,7 +39,7 @@ def update_part(part_id: int, payload: schemas.PartCreate, db: Session = Depends
     part = db.query(models.Part).filter(models.Part.id == part_id).first()
     if not part:
         raise HTTPException(404, "Part not found")
-    for k, v in payload.model_dump(exclude_none=True).items():
+    for k, v in payload.model_dump().items():
         setattr(part, k, v)
     db.commit()
     db.refresh(part)

@@ -1,6 +1,7 @@
 """
 MQTT Manager — handles connection to Mosquitto and all publish operations.
 Supports MQTT Discovery for automatic Home Assistant entity creation.
+Supports multi-property notify topics.
 """
 
 import json
@@ -12,19 +13,19 @@ import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
 
-BROKER     = os.getenv("MQTT_BROKER", "")
-PORT       = int(os.getenv("MQTT_PORT", "1883"))
-USERNAME   = os.getenv("MQTT_USERNAME", "")
-PASSWORD   = os.getenv("MQTT_PASSWORD", "")
-BASE_TOPIC = "homemaint"
+BROKER      = os.getenv("MQTT_BROKER", "")
+PORT        = int(os.getenv("MQTT_PORT", "1883"))
+USERNAME    = os.getenv("MQTT_USERNAME", "")
+PASSWORD    = os.getenv("MQTT_PASSWORD", "")
+BASE_TOPIC  = "homemaint"
 DISC_PREFIX = "homeassistant"
 
 
 class MQTTManager:
     def __init__(self):
-        self._client = None
+        self._client    = None
         self._connected = False
-        self._lock = threading.Lock()
+        self._lock      = threading.Lock()
 
     def connect(self):
         if not BROKER:
@@ -102,26 +103,23 @@ class MQTTManager:
     # ── MQTT Discovery ────────────────────────────────────────────────────
 
     def register_task_sensor(self, property_id, property_name, asset_id, asset_name, task_id, task_name):
-        """
-        Publish MQTT Discovery config for a task sensor.
-        Creates a sensor entity in HA automatically.
-        """
-        unique_id  = f"homemaint_task_{task_id}"
+        """Publish MQTT Discovery config for a task sensor."""
+        unique_id   = f"homemaint_task_{task_id}"
         state_topic = f"{BASE_TOPIC}/{property_id}/{asset_id}/{task_id}/state"
         attr_topic  = f"{BASE_TOPIC}/{property_id}/{asset_id}/{task_id}/attributes"
         disc_topic  = f"{DISC_PREFIX}/sensor/{unique_id}/config"
 
         config = {
-            "name":               f"HM: {asset_name} — {task_name}",
-            "unique_id":          unique_id,
-            "state_topic":        state_topic,
+            "name":                  f"HM: {asset_name} — {task_name}",
+            "unique_id":             unique_id,
+            "state_topic":           state_topic,
             "json_attributes_topic": attr_topic,
-            "icon":               "mdi:wrench-clock",
+            "icon":                  "mdi:wrench-clock",
             "device": {
-                "identifiers":    [f"homemaint_{property_id}"],
-                "name":           f"HomeMaint: {property_name}",
-                "model":          "HomeMaint",
-                "manufacturer":   "HomeMaint",
+                "identifiers":  [f"homemaint_{property_id}"],
+                "name":         f"HomeMaint: {property_name}",
+                "model":        "HomeMaint",
+                "manufacturer": "HomeMaint",
             },
             "availability": [
                 {"topic": f"{BASE_TOPIC}/status", "payload_available": "online", "payload_not_available": "offline"}
@@ -153,6 +151,32 @@ class MQTTManager:
         }
         self.publish(disc_topic, config, retain=True)
 
+    def register_property_notify_sensor(self, property_id, property_name):
+        """
+        Register an MQTT sensor for per-property push notifications.
+        HA automation listens on homemaint/{property_id}/notify.
+        """
+        unique_id  = f"homemaint_notify_{property_id}"
+        disc_topic = f"{DISC_PREFIX}/sensor/{unique_id}/config"
+        config = {
+            "name":        f"HM Notify: {property_name}",
+            "unique_id":   unique_id,
+            "state_topic": f"{BASE_TOPIC}/{property_id}/notify",
+            "value_template": "{{ value_json.title }}",
+            "json_attributes_topic": f"{BASE_TOPIC}/{property_id}/notify",
+            "icon": "mdi:bell-alert",
+            "device": {
+                "identifiers": [f"homemaint_{property_id}"],
+                "name":        f"HomeMaint: {property_name}",
+                "model":       "HomeMaint",
+                "manufacturer":"HomeMaint",
+            },
+            "availability": [
+                {"topic": f"{BASE_TOPIC}/status", "payload_available": "online", "payload_not_available": "offline"}
+            ],
+        }
+        self.publish(disc_topic, config, retain=True)
+
     def register_global_sensor(self):
         """Global rollup sensor."""
         unique_id  = "homemaint_global"
@@ -171,7 +195,7 @@ class MQTTManager:
         }
         self.publish(disc_topic, config, retain=True)
 
-    # ── State publishing ─────────────────────────────────────────────────
+    # ── State publishing ──────────────────────────────────────────────────
 
     def publish_task_state(self, property_id, asset_id, task_id, status, days_until_due, usage_until_due, last_done, last_by, escalation_level):
         state_topic = f"{BASE_TOPIC}/{property_id}/{asset_id}/{task_id}/state"
@@ -201,18 +225,25 @@ class MQTTManager:
             "total_tasks":      total_tasks,
         }, retain=True)
 
-    def send_mobile_notification(self, title, message, tag=None, priority="normal"):
+    def send_mobile_notification(self, title, message, tag=None, priority="normal", property_id=None):
         """
         Send push notification via HA mobile_app notify service.
-        Publishes to homemaint/notify topic — HA automation picks this up.
+        Publishes to:
+          - homemaint/{property_id}/notify  (per-property, if property_id given)
+          - homemaint/notify                (global fallback, always)
+        HA automations can listen on either topic.
         """
         payload = {
-            "title":   title,
-            "message": message,
-            "tag":     tag or "homemaint",
-            "priority": priority,  # normal | high | urgent
+            "title":    title,
+            "message":  message,
+            "tag":      tag or "homemaint",
+            "priority": priority,
         }
+        # Always publish to global topic
         self.publish(f"{BASE_TOPIC}/notify", payload)
+        # Also publish to per-property topic if provided
+        if property_id is not None:
+            self.publish(f"{BASE_TOPIC}/{property_id}/notify", payload)
 
 
 # Singleton

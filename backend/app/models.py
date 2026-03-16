@@ -93,6 +93,10 @@ class Asset(Base):
     location_on_property   = Column(String, nullable=True)
     current_hours          = Column(Float, nullable=True)    # For hour-tracked assets
     current_miles          = Column(Float, nullable=True)    # For mile-tracked assets
+    usage_reminder_days    = Column(Integer, nullable=True)  # None = use global default
+    usage_reminder_sent_at = Column(DateTime, nullable=True) # last time reminder was sent
+    usage_reminder_days    = Column(Integer, nullable=True)  # None = use global default
+    usage_reminder_sent_at = Column(DateTime, nullable=True) # last time reminder was sent
     icon                   = Column(String, nullable=True)
     model_year             = Column(Integer, nullable=True)
     custom_fields          = Column(Text, nullable=True)
@@ -175,7 +179,7 @@ class SpareInventory(Base):
     part_id          = Column(Integer, ForeignKey("parts.id"), nullable=True)
     name             = Column(String, nullable=False)
     part_number      = Column(String, nullable=True)
-    quantity         = Column(Integer, default=1, nullable=False)
+    quantity         = Column(Integer, default=0, nullable=False)
     storage_location = Column(String, nullable=True)
     notes            = Column(Text, nullable=True)
     date_added       = Column(DateTime, server_default=func.now())

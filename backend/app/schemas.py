@@ -129,6 +129,7 @@ class AssetCreate(BaseModel):
     current_miles: Optional[float] = None
     icon: Optional[str] = None
     custom_fields: Optional[str] = None
+    usage_reminder_days: Optional[int] = None
 
 class AssetUpdate(AssetCreate):
     property_id: Optional[int] = None
@@ -136,6 +137,7 @@ class AssetUpdate(AssetCreate):
     model_year: Optional[int] = None
     purchase_date: Optional[date] = None
     custom_fields: Optional[str] = None
+    usage_reminder_days: Optional[int] = None
 
 class AssetOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -160,6 +162,8 @@ class AssetOut(BaseModel):
     due_soon_count: Optional[int] = 0
     age_years: Optional[float] = None
     replacement_due_soon: Optional[bool] = False
+    usage_reminder_days: Optional[int] = None
+    usage_reminder_sent_at: Optional[datetime] = None
 
 
 # ── Task ───────────────────────────────────────────────────────────────────
