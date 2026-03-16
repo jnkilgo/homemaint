@@ -465,7 +465,7 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
   const [linkedIds, setLinkedIds] = useState(new Set()) // task_part ids currently linked
   const [tpMap, setTpMap] = useState({})             // part_id -> task_part id (for unlinking)
   const [quickAdd, setQuickAdd] = useState(false)
-  const [newPart, setNewPart] = useState({ name: '', part_number: '', qty: 1, spec_notes: '', supplier: '' })
+  const [newPart, setNewPart] = useState({ name: '', part_number: '', qty: 0, spec_notes: '', supplier: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -591,7 +591,7 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
             <input style={{ flex: '1 1 80px' }} placeholder="Part #" value={newPart.part_number} onChange={e => setNewPart(p => ({ ...p, part_number: e.target.value }))} />
             <input style={{ flex: '1 1 80px' }} placeholder="Supplier" value={newPart.supplier} onChange={e => setNewPart(p => ({ ...p, supplier: e.target.value }))} />
           </div>
-          <button className="btn btn-ghost btn-sm" style={{ marginTop: '6px' }} onClick={() => { setQuickAdd(false); setNewPart({ name: '', part_number: '', qty: 1, spec_notes: '', supplier: '' }) }}>Cancel</button>
+          <button className="btn btn-ghost btn-sm" style={{ marginTop: '6px' }} onClick={() => { setQuickAdd(false); setNewPart({ name: '', part_number: '', qty: 0, spec_notes: '', supplier: '' }) }}>Cancel</button>
         </div>
       ) : (
         <button className="btn btn-ghost btn-sm" onClick={() => setQuickAdd(true)}>+ New part</button>

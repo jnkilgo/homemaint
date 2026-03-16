@@ -139,14 +139,6 @@ export default function Dashboard({ onNavigate }) {
     <div>
       {/* Stats row */}
       <div className="grid-4" style={{ marginBottom: '24px' }}>
-        <div className="stat-card">
-          <div className="stat-label">Properties</div>
-          <div className="stat-value">{data.total_properties}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Assets</div>
-          <div className="stat-value">{data.total_assets}</div>
-        </div>
         <div className="stat-card" style={{ borderColor: data.overdue_count > 0 ? 'var(--status-overdue)' : 'var(--border)' }}>
           <div className="stat-label">Overdue</div>
           <div className="stat-value" style={{ color: data.overdue_count > 0 ? 'var(--status-overdue)' : 'inherit' }}>

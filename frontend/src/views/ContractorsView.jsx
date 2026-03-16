@@ -134,12 +134,6 @@ function ContractorHistory({ contractor, onClose }) {
                 <div style={{ fontWeight: 600 }}>{contractor.trade}</div>
               </div>
             )}
-            {contractor.phone && (
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>PHONE</div>
-                <div style={{ fontFamily: 'var(--font-mono)' }}>{contractor.phone}</div>
-              </div>
-            )}
           </div>
 
           {logs.length === 0

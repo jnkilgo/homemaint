@@ -1070,7 +1070,7 @@ function HistoryTab({ asset, logs, onReload }) {
     setCollapsedYears(prev => ({ ...prev, [yr]: !prev[yr] }))
   }
 
-  const unitLabel = asset.interval_type === 'hours' ? 'h' : 'mi'
+  const unitLabel = asset.current_hours != null ? 'h' : 'mi'
 
   function entryIcon(e) {
     if (e._type === 'usage') return { icon: '⏱', color: 'var(--accent)' }
@@ -1260,8 +1260,11 @@ function HistoryTab({ asset, logs, onReload }) {
 }
 
 function AssetContractorsTab({ asset }) {
-  const [associations, setAssociations] = useState([])
   const [allContractors, setAllContractors] = useState([])
+  const [linkedIds, setLinkedIds] = useState(new Set())
+  const [linkedNotes, setLinkedNotes] = useState({})  // contractorId -> notes
+  const [lastUsed, setLastUsed] = useState({})         // contractorId -> date string
+  const [displayContractors, setDisplayContractors] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [selectedId, setSelectedId] = useState('')
@@ -1272,17 +1275,56 @@ function AssetContractorsTab({ asset }) {
   function load() {
     Promise.all([
       api.getAssetContractors(asset.id),
-      api.getContractors()
-    ]).then(([assocs, contractors]) => {
-      setAssociations(assocs)
+      api.getContractors(),
+      api.getLogs({ asset_id: asset.id, limit: 200 })
+    ]).then(([assocs, contractors, logs]) => {
       setAllContractors(contractors)
+
+      // Build linked set + notes map
+      const ids = new Set(assocs.map(a => a.contractor_id))
+      const notes = {}
+      assocs.forEach(a => { notes[a.contractor_id] = a.notes })
+      setLinkedIds(ids)
+      setLinkedNotes(notes)
+
+      // Build lastUsed map from logs
+      const lu = {}
+      logs.forEach(l => {
+        if (l.contractor_id && !lu[l.contractor_id]) {
+          lu[l.contractor_id] = l.completed_at
+        }
+      })
+      setLastUsed(lu)
+
+      // Build unified display list: linked + history, deduped
+      const seen = new Set()
+      const display = []
+
+      // First: explicitly linked
+      assocs.forEach(a => {
+        if (!seen.has(a.contractor_id)) {
+          seen.add(a.contractor_id)
+          const c = contractors.find(c => c.id === a.contractor_id)
+          if (c) display.push({ ...c, _linked: true })
+        }
+      })
+
+      // Then: from history (not already linked)
+      logs.forEach(l => {
+        if (l.contractor_id && !seen.has(l.contractor_id)) {
+          seen.add(l.contractor_id)
+          const c = contractors.find(c => c.id === l.contractor_id)
+          if (c) display.push({ ...c, _linked: false })
+        }
+      })
+
+      setDisplayContractors(display)
     }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [asset.id])
 
-  const linkedIds = new Set(associations.map(a => a.contractor_id))
-  const available = allContractors.filter(c => !linkedIds.has(c.id))
+  const available = allContractors.filter(c => !linkedIds.has(c.id) && !displayContractors.find(d => d.id === c.id))
 
   async function addContractor() {
     if (!selectedId) return
@@ -1298,7 +1340,7 @@ function AssetContractorsTab({ asset }) {
   async function remove(contractorId) {
     try {
       await api.removeAssetContractor(asset.id, contractorId)
-      setAssociations(prev => prev.filter(a => a.contractor_id !== contractorId))
+      load()
     } catch (e) { setError(e.message) }
   }
 
@@ -1307,23 +1349,33 @@ function AssetContractorsTab({ asset }) {
   return (
     <div style={{ padding: '16px 18px' }}>
       {error && <div className="alert alert-error" style={{ marginBottom: '12px' }}>{error}</div>}
-      {associations.length === 0 && !adding ? (
+      {displayContractors.length === 0 && !adding ? (
         <div className="empty"><div className="empty-text">No contractors linked to this asset yet</div></div>
       ) : (
         <div style={{ marginBottom: '12px' }}>
-          {associations.map(a => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: '8px' }}>
+          {displayContractors.map(c => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: '8px' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: '13px' }}>{a.contractor_name}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', gap: '10px', marginTop: '2px' }}>
-                  {a.contractor_trade && <span>{a.contractor_trade}</span>}
-                  {a.contractor_phone && <a href={`tel:${a.contractor_phone}`} style={{ color: 'var(--accent)' }}>{a.contractor_phone}</a>}
-                  {a.contractor_email && <a href={`mailto:${a.contractor_email}`} style={{ color: 'var(--accent)' }}>{a.contractor_email}</a>}
+                <div style={{ fontWeight: 600, fontSize: '13px' }}>{c.name}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', gap: '10px', marginTop: '2px', flexWrap: 'wrap' }}>
+                  {c.trade && <span>{c.trade}</span>}
+                  {c.phone && <a href={`tel:${c.phone}`} style={{ color: 'var(--accent)' }}>{c.phone}</a>}
+                  {c.email && <a href={`mailto:${c.email}`} style={{ color: 'var(--accent)' }}>{c.email}</a>}
+                  {lastUsed[c.id] && (
+                    <span>Last worked {new Date(lastUsed[c.id]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  )}
                 </div>
-                {a.notes && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px', fontStyle: 'italic' }}>{a.notes}</div>}
+                {linkedNotes[c.id] && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px', fontStyle: 'italic' }}>{linkedNotes[c.id]}</div>}
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => remove(a.contractor_id)}
-                style={{ color: 'var(--status-overdue)', flexShrink: 0 }}>✕</button>
+              {c._linked ? (
+                <button className="btn btn-ghost btn-sm" onClick={() => remove(c.id)}
+                  style={{ color: 'var(--status-overdue)', flexShrink: 0 }}>✕</button>
+              ) : (
+                <button className="btn btn-ghost btn-sm" onClick={async () => {
+                  await api.addAssetContractor(asset.id, { contractor_id: c.id, notes: null })
+                  load()
+                }} style={{ fontSize: '11px', flexShrink: 0, color: 'var(--accent)' }}>+ Link</button>
+              )}
             </div>
           ))}
         </div>
