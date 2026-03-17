@@ -166,13 +166,13 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
                     padding: '16px 20px', borderRadius: 10,
                     border: `2px solid ${persona?.id === p.id ? 'var(--accent)' : 'var(--border)'}`,
                     background: persona?.id === p.id ? 'rgba(72,199,142,0.08)' : 'var(--surface)',
-                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', color: 'var(--text)',
                   }}
                 >
                   <span style={{ fontSize: 28 }}>{p.icon}</span>
                   <div>
-                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 15 }}>{p.label}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{p.description}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 15, textAlign: 'left' }}>{p.label}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2, textAlign: 'left' }}>{p.description}</div>
                   </div>
                 </button>
               ))}
