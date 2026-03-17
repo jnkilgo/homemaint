@@ -449,21 +449,6 @@ function UsageReminderSettings() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-header"><span className="card-title">Setup</span></div>
-        <div className="card-body">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>Property Setup Wizard</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Add a new property with suggested assets based on your profile
-              </div>
-            </div>
-            <button className="btn btn-primary" onClick={onStartOnboarding}>Launch Wizard →</button>
-          </div>
-        </div>
-      </div>
-
 
       <Toggle
         checked={settings.usage_reminder_ha_notify}
@@ -641,6 +626,21 @@ export default function SettingsView({ onLogout, properties = [], onStartOnboard
               <button className="btn btn-ghost" onClick={() => setEditUser(currentUser)}>Change Password</button>
               <button className="btn btn-ghost" onClick={onLogout}>Sign Out</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <div className="card-header"><span className="card-title">Setup</span></div>
+        <div className="card-body">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Property Setup Wizard</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Add a new property with suggested assets based on your profile
+              </div>
+            </div>
+            <button className="btn btn-primary" onClick={onStartOnboarding}>Launch Wizard →</button>
           </div>
         </div>
       </div>
