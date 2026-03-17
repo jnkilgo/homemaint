@@ -139,6 +139,7 @@ def global_dashboard(db: Session = Depends(get_db), current=Depends(get_current_
                     days_until_due=days_until_due,
                     usage_until_due=usage_until_due,
                     last_completed_at=task.last_completed_at,
+                    asset_category=asset.category,
                 )
                 if status == "overdue":
                     overdue_tasks.append(item)

@@ -438,6 +438,7 @@ class TaskStatusItem(BaseModel):
     days_until_due: Optional[int]
     usage_until_due: Optional[float]
     last_completed_at: Optional[datetime]
+    asset_category: Optional[str] = None
 
 class GlobalSummary(BaseModel):
     total_properties: int
