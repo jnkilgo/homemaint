@@ -8,6 +8,7 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [categoryFilter, setCategoryFilter] = useState('')
 
   useEffect(() => {
     api.getDashboard().then(setData).finally(() => setLoading(false))
@@ -61,6 +62,27 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
         </div>
       </div>
 
+      {/* Category filter */}
+      {data && (overdue_tasks_all => {
+        const allTasks = [...data.overdue_tasks, ...data.due_soon_tasks]
+        const categories = [...new Set(allTasks.map(t => t.asset_category).filter(Boolean))].sort()
+        return categories.length > 1 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Filter by category:</span>
+            <button onClick={() => setCategoryFilter('')}
+              className={`btn btn-sm ${categoryFilter === '' ? 'btn-primary' : 'btn-ghost'}`}>
+              All
+            </button>
+            {categories.map(c => (
+              <button key={c} onClick={() => setCategoryFilter(c === categoryFilter ? '' : c)}
+                className={`btn btn-sm ${categoryFilter === c ? 'btn-primary' : 'btn-ghost'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+        ) : null
+      })()}
+
       <div className="grid-2" style={{ gap: '20px' }}>
         {/* Overdue tasks */}
         <div className="card">
@@ -68,7 +90,7 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
             <span className="card-title" style={{ color: data.overdue_tasks.length > 0 ? 'var(--status-overdue)' : 'inherit' }}>
               Overdue Tasks
             </span>
-            <span className="badge badge-overdue">{data.overdue_tasks.length}</span>
+            <span className="badge badge-overdue">{data.overdue_tasks.filter(t => !categoryFilter || t.asset_category === categoryFilter).length}</span>
           </div>
           {data.overdue_tasks.length === 0
             ? <div className="empty"><div className="empty-icon">✓</div><div className="empty-text">All caught up</div></div>
@@ -77,7 +99,7 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
                   <th>Task</th><th>Asset</th><th>Property</th><th>Overdue</th>
                 </tr></thead>
                 <tbody>
-                  {data.overdue_tasks.map(t => (
+                  {data.overdue_tasks.filter(t => !categoryFilter || t.asset_category === categoryFilter).map(t => (
                     <tr key={t.task_id} style={{ cursor: 'pointer' }}
                       onClick={() => setSelectedTask(t)}>
                       <td>{t.task_name}</td>
@@ -95,7 +117,7 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
         <div className="card">
           <div className="card-header">
             <span className="card-title">Due Soon</span>
-            <span className="badge badge-due_soon">{data.due_soon_tasks.length}</span>
+            <span className="badge badge-due_soon">{data.due_soon_tasks.filter(t => !categoryFilter || t.asset_category === categoryFilter).length}</span>
           </div>
           {data.due_soon_tasks.length === 0
             ? <div className="empty"><div className="empty-text">Nothing due in the next 2 weeks</div></div>
@@ -104,7 +126,7 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
                   <th>Task</th><th>Asset</th><th>Property</th><th>In</th>
                 </tr></thead>
                 <tbody>
-                  {data.due_soon_tasks.map(t => (
+                  {data.due_soon_tasks.filter(t => !categoryFilter || t.asset_category === categoryFilter).map(t => (
                     <tr key={t.task_id} style={{ cursor: 'pointer' }}
                       onClick={() => setSelectedTask(t)}>
                       <td>{t.task_name}</td>

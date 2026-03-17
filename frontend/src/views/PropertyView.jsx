@@ -1763,6 +1763,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   const [loading, setLoading] = useState(true)
   const [refresh, setRefresh] = useState(0)
   const [filter, setFilter] = useState(null) // null | 'overdue' | 'due_soon'
+  const [categoryFilter, setCategoryFilter] = useState(null)
   const [addAsset, setAddAsset] = useState(false)
   const [editAsset, setEditAsset] = useState(null)
   const [deleteAsset, setDeleteAsset] = useState(null)
@@ -1796,6 +1797,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   useEffect(() => {
     setLoading(true)
     setFilter(null)
+    setCategoryFilter(null)
     Promise.all([
       api.getProperties().then(ps => ps.find(p => p.id === propertyId)),
       api.getAssets(propertyId)
@@ -1808,13 +1810,14 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   if (loading) return <LoadingSpinner />
 
   // Filter assets: only show assets that have at least one task matching filter
-  const filteredAssets = filter
-    ? assets.filter(a => {
-        if (filter === 'overdue')  return (a.overdue_count || 0) > 0
-        if (filter === 'due_soon') return (a.due_soon_count || 0) > 0
-        return true
-      })
-    : assets
+  const categories = [...new Set(assets.map(a => a.category).filter(Boolean))].sort()
+
+  const filteredAssets = assets.filter(a => {
+    if (filter === 'overdue' && !(a.overdue_count || 0)) return false
+    if (filter === 'due_soon' && !(a.due_soon_count || 0)) return false
+    if (categoryFilter && a.category !== categoryFilter) return false
+    return true
+  })
 
   function toggleFilter(f) {
     setFilter(prev => prev === f ? null : f)
@@ -1851,6 +1854,21 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
             <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
               {[property.address_line1, property.city, property.state].filter(Boolean).join(', ')}
             </div>
+            {categories.length > 1 && (
+              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Category:</span>
+                <button
+                  className={`btn btn-sm ${!categoryFilter ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setCategoryFilter(null)}>All</button>
+                {categories.map(c => (
+                  <button key={c}
+                    className={`btn btn-sm ${categoryFilter === c ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setCategoryFilter(prev => prev === c ? null : c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => setEditProperty(true)} title="Edit property">✎ Edit</button>
