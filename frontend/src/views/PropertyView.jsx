@@ -1854,21 +1854,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
             <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
               {[property.address_line1, property.city, property.state].filter(Boolean).join(', ')}
             </div>
-            {categories.length > 1 && (
-              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Category:</span>
-                <button
-                  className={`btn btn-sm ${!categoryFilter ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setCategoryFilter(null)}>All</button>
-                {categories.map(c => (
-                  <button key={c}
-                    className={`btn btn-sm ${categoryFilter === c ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => setCategoryFilter(prev => prev === c ? null : c)}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
+
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => setEditProperty(true)} title="Edit property">✎ Edit</button>
@@ -1903,6 +1889,28 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
                 : `${property.asset_count} assets`}
             </span>
           </div>
+        </div>
+      )}
+
+      {categories.length > 1 && (
+        <div style={{
+          display: 'flex', gap: '6px', alignItems: 'center',
+          overflowX: 'auto', paddingBottom: '4px', marginBottom: '12px',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>Category:</span>
+          <button
+            className={`btn btn-sm ${!categoryFilter ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ flexShrink: 0 }}
+            onClick={() => setCategoryFilter(null)}>All</button>
+          {categories.map(c => (
+            <button key={c}
+              className={`btn btn-sm ${categoryFilter === c ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+              onClick={() => setCategoryFilter(prev => prev === c ? null : c)}>
+              {c}
+            </button>
+          ))}
         </div>
       )}
 
