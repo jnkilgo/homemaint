@@ -98,16 +98,21 @@ def create_task(payload: schemas.TaskCreate, db: Session = Depends(get_db), curr
     db.flush()
 
     for part in (payload.parts or []):
-        tp = models.TaskPart(
+        # Create the Part record first, then link via TaskPart
+        p = models.Part(
             task_id=task.id,
+            asset_id=asset.id,
             name=part.name,
             part_number=getattr(part, 'part_number', None),
             supplier=getattr(part, 'supplier', None),
             reorder_url=getattr(part, 'reorder_url', None),
             last_price=getattr(part, 'last_price', None),
-            qty=getattr(part, 'qty', 0),
+            qty=getattr(part, 'qty', 1),
             spec_notes=getattr(part, 'spec_notes', None),
         )
+        db.add(p)
+        db.flush()
+        tp = models.TaskPart(task_id=task.id, part_id=p.id)
         db.add(tp)
 
     db.commit()
