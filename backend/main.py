@@ -35,8 +35,22 @@ _scheduler = None
 async def lifespan(app: FastAPI):
     global _scheduler
 
-    # Database
-    Base.metadata.create_all(bind=engine)
+    # Database — run Alembic migrations, fall back to create_all for SQLite dev
+    try:
+        from alembic.config import Config
+        from alembic import command
+        from sqlalchemy import inspect as sa_inspect
+        alembic_cfg = Config("/app/alembic.ini") if os.path.exists("/app/alembic.ini") else Config("alembic.ini")
+        # Stamp baseline if alembic_version table doesn't exist yet
+        inspector = sa_inspect(engine)
+        if 'alembic_version' not in inspector.get_table_names():
+            Base.metadata.create_all(bind=engine)
+            command.stamp(alembic_cfg, "head")
+        else:
+            command.upgrade(alembic_cfg, "head")
+    except Exception as e:
+        logger.warning(f"Alembic migration failed, falling back to create_all: {e}")
+        Base.metadata.create_all(bind=engine)
     seed_database()
 
     # MQTT
