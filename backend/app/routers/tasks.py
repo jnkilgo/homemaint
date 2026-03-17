@@ -95,6 +95,21 @@ def create_task(payload: schemas.TaskCreate, db: Session = Depends(get_db), curr
     task_data = payload.model_dump(exclude={"parts"})
     task = models.Task(**task_data)
     db.add(task)
+    db.flush()
+
+    for part in (payload.parts or []):
+        tp = models.TaskPart(
+            task_id=task.id,
+            name=part.name,
+            part_number=getattr(part, 'part_number', None),
+            supplier=getattr(part, 'supplier', None),
+            reorder_url=getattr(part, 'reorder_url', None),
+            last_price=getattr(part, 'last_price', None),
+            qty=getattr(part, 'qty', 0),
+            spec_notes=getattr(part, 'spec_notes', None),
+        )
+        db.add(tp)
+
     db.commit()
     db.refresh(task)
     return _enrich(task, db)
