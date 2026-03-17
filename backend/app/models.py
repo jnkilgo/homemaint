@@ -144,7 +144,7 @@ class Task(Base):
     interval_type        = Column(String, nullable=False)
     season               = Column(String, nullable=True)
     advance_warning_days = Column(Integer, default=14)
-    is_critical          = Column(Integer, default=0)
+    is_critical          = Column(Boolean, default=False)
     task_group           = Column(String, nullable=True)
     sort_order           = Column(Integer, default=0)
     last_completed_at    = Column(DateTime, nullable=True)
