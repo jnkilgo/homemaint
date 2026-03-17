@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import TaskDetailModal from '../components/TaskDetailModal'
 import { api } from '../api'
 import { StatusBadge, DueLabel, Modal, ConfirmModal, LoadingSpinner, formatDate, intervalLabel, useForm } from '../components/shared'
 import { AssetModal, TaskModal, DeleteAssetModal, DeleteTaskModal, PropertyModal } from '../components/ManageModals'
@@ -561,7 +562,7 @@ function SparesTab({ asset }) {
 
 const UNGROUPED = '__ungrouped__'
 
-function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAdd, onReordered, statusFilter }) {
+function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAdd, onReordered, statusFilter, onPreview, asset }) {
   const [tasks, setTasks] = useState(() => [...initialTasks].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
   const [collapsedGroups, setCollapsedGroups] = useState({})
   const [editingGroup, setEditingGroup] = useState(null)
@@ -816,7 +817,7 @@ function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAd
                       <td>
                         <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                           {task.is_critical && <span title="Critical alert" style={{ fontSize: '10px' }}>🔴</span>}
-                          {task.name}
+                          <span onClick={() => onPreview && onPreview({ task, asset })} style={{ cursor: 'pointer', textDecoration: 'underline dotted', textDecorationColor: 'var(--text-muted)' }} title="Preview task">{task.name}</span>
                           {task.task_parts && task.task_parts.length > 0 && (
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1px 6px' }}
                               title={task.task_parts.map(tp => tp.part_name).join(', ')}>
@@ -1413,7 +1414,7 @@ function AssetContractorsTab({ asset }) {
   )
 }
 
-function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onToggle, onSnoozeDone, taskRefreshKey, statusFilter }) {
+function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onToggle, onSnoozeDone, taskRefreshKey, statusFilter, onPreview }) {
   const open = isOpen ?? false
   const [tasks, setTasks] = useState([])
   const [tasksLoaded, setTasksLoaded] = useState(false)
@@ -1538,6 +1539,8 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
               onAdd={() => setAddTask(true)}
               onReordered={loadTasks}
               statusFilter={statusFilter}
+              onPreview={onPreview}
+              asset={asset}
             />
           )}
 
@@ -1776,6 +1779,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   const [editProperty, setEditProperty] = useState(false)
   const [deleteProperty, setDeleteProperty] = useState(false)
   const [snoozeTask, setSnoozeTask] = useState(null)
+  const [previewTask, setPreviewTask] = useState(null)
 
   // Auto-open asset when navigating from dashboard
   useEffect(() => {
@@ -1915,6 +1919,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
               onSnooze={t => setSnoozeTask({ task: t, assetId: asset.id })}
               taskRefreshKey={assetTaskRefresh[asset.id] || 0}
               statusFilter={filter}
+              onPreview={({ task, asset }) => setPreviewTask({ task, asset })}
             />
             </div>
           ))
@@ -1973,6 +1978,14 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
             setSnoozeTask(null)
             setAssetTaskRefresh(prev => ({ ...prev, [snoozeTask.assetId]: (prev[snoozeTask.assetId] || 0) + 1 }))
           }}
+        />
+      )}
+      {previewTask && (
+        <TaskDetailModal
+          task={previewTask.task}
+          assetName={previewTask.asset?.name}
+          propertyName={property?.name}
+          onClose={() => setPreviewTask(null)}
         />
       )}
     </div>
