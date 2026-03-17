@@ -470,3 +470,17 @@ input:focus, textarea:focus, select:focus {
 .asset-panel-body { overflow-x: hidden; }
 
 .badge-snoozed { background: var(--status-soon-bg); color: var(--status-soon); border: 1px solid var(--status-soon); }
+
+/* ── btn-link — inline text button ─────────────────────────────────────────── */
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+}
+.btn-link:hover {
+  color: var(--text);
+}

@@ -66,7 +66,7 @@ def register(payload: RegisterRequest, background_tasks: BackgroundTasks, db: Se
         display_name=payload.display_name,
         password_hash=hash_password(payload.password),
         role="member",
-        is_verified=False,
+        is_verified=True,
         verify_token=verify_token,
     )
     db.add(user)
