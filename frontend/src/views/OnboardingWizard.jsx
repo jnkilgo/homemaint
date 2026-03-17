@@ -29,21 +29,21 @@ const PERSONA_TEMPLATES = {
       {
         name: 'Smoke Detectors', category: 'Safety', icon: '🔥',
         tasks: [
-          { name: 'Test Smoke Detector', interval: 6, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [] },
-          { name: 'Replace Smoke Detector Battery', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [{ name: '9V Battery', qty: 0 }] },
+          { name: 'Test Smoke Detector', interval: 6, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [] },
+          { name: 'Replace Smoke Detector Battery', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [{ name: '9V Battery', qty: 0 }] },
         ],
       },
       {
         name: 'HVAC System', category: 'HVAC', icon: '❄️',
         tasks: [
           { name: 'Replace HVAC Air Filter', interval: 90, interval_type: 'days', is_critical: false, task_group: 'Filters', parts: [{ name: 'HVAC Air Filter', qty: 0 }] },
-          { name: 'Schedule Annual HVAC Service', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Service', parts: [] },
+          { name: 'Schedule Annual HVAC Service', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Service', parts: [] },
         ],
       },
       {
         name: 'Automobile', category: 'Vehicle', icon: '🚗',
         tasks: [
-          { name: 'Change Engine Oil', interval: 6, interval_type: 'months', is_critical: true, task_group: 'Engine', parts: [{ name: 'Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
+          { name: 'Change Engine Oil', interval: 6, interval_type: 'months', is_critical: false, task_group: 'Engine', parts: [{ name: 'Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
           { name: 'Replace Cabin Air Filter', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Filters', parts: [{ name: 'Cabin Air Filter', qty: 0 }] },
           { name: 'Check Tire Pressure', interval: 1, interval_type: 'months', is_critical: false, task_group: 'Tires', parts: [] },
         ],
@@ -66,7 +66,7 @@ const PERSONA_TEMPLATES = {
         name: 'HVAC System', category: 'HVAC', icon: '❄️',
         tasks: [
           { name: 'Replace HVAC Air Filter', interval: 90, interval_type: 'days', is_critical: false, task_group: 'Filters', parts: [{ name: 'HVAC Air Filter', qty: 0 }] },
-          { name: 'Schedule Annual HVAC Service', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Service', parts: [] },
+          { name: 'Schedule Annual HVAC Service', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Service', parts: [] },
           { name: 'Clean Condenser Coils', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Cleaning', parts: [] },
         ],
       },
@@ -74,14 +74,14 @@ const PERSONA_TEMPLATES = {
         name: 'Water Heater', category: 'Plumbing', icon: '🚿',
         tasks: [
           { name: 'Flush Water Heater', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Maintenance', parts: [] },
-          { name: 'Inspect Pressure Relief Valve', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [] },
+          { name: 'Inspect Pressure Relief Valve', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [] },
         ],
       },
       {
         name: 'Smoke Detectors', category: 'Safety', icon: '🔥',
         tasks: [
-          { name: 'Test Smoke Detector', interval: 6, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [] },
-          { name: 'Replace Smoke Detector Battery', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [{ name: '9V Battery', qty: 0 }] },
+          { name: 'Test Smoke Detector', interval: 6, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [] },
+          { name: 'Replace Smoke Detector Battery', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [{ name: '9V Battery', qty: 0 }] },
         ],
       },
       {
@@ -108,7 +108,7 @@ const PERSONA_TEMPLATES = {
       {
         name: 'Automobile', category: 'Vehicle', icon: '🚗',
         tasks: [
-          { name: 'Change Engine Oil', interval: 6, interval_type: 'months', is_critical: true, task_group: 'Engine', parts: [{ name: 'Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
+          { name: 'Change Engine Oil', interval: 6, interval_type: 'months', is_critical: false, task_group: 'Engine', parts: [{ name: 'Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
           { name: 'Replace Cabin Air Filter', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Filters', parts: [{ name: 'Cabin Air Filter', qty: 0 }] },
           { name: 'Check Tire Pressure', interval: 1, interval_type: 'months', is_critical: false, task_group: 'Tires', parts: [] },
         ],
@@ -116,9 +116,9 @@ const PERSONA_TEMPLATES = {
       {
         name: 'Boat', category: 'Vehicle', icon: '⛵',
         tasks: [
-          { name: 'Change Engine Oil', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Engine', parts: [{ name: 'Marine Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
+          { name: 'Change Engine Oil', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Engine', parts: [{ name: 'Marine Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
           { name: 'Replace Spark Plugs', interval: 24, interval_type: 'months', is_critical: false, task_group: 'Engine', parts: [{ name: 'Spark Plug', qty: 0 }] },
-          { name: 'Check Bilge Pump', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [] },
+          { name: 'Check Bilge Pump', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [] },
         ],
       },
     ],
@@ -131,7 +131,7 @@ const PERSONA_TEMPLATES = {
         name: 'HVAC System', category: 'HVAC', icon: '❄️',
         tasks: [
           { name: 'Replace HVAC Air Filter', interval: 90, interval_type: 'days', is_critical: false, task_group: 'Filters', parts: [{ name: 'HVAC Air Filter', qty: 0 }] },
-          { name: 'Schedule Annual HVAC Service', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Service', parts: [] },
+          { name: 'Schedule Annual HVAC Service', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Service', parts: [] },
         ],
       },
       {
@@ -143,15 +143,15 @@ const PERSONA_TEMPLATES = {
       {
         name: 'Smoke Detectors', category: 'Safety', icon: '🔥',
         tasks: [
-          { name: 'Test Smoke Detector', interval: 6, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [] },
-          { name: 'Replace Smoke Detector Battery', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [{ name: '9V Battery', qty: 0 }] },
+          { name: 'Test Smoke Detector', interval: 6, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [] },
+          { name: 'Replace Smoke Detector Battery', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [{ name: '9V Battery', qty: 0 }] },
         ],
       },
       {
         name: 'Rental Appliances', category: 'Appliances', icon: '🍳',
         tasks: [
           { name: 'Inspect Appliances', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Inspection', parts: [] },
-          { name: 'Clean Dryer Vent', interval: 12, interval_type: 'months', is_critical: true, task_group: 'Safety', parts: [] },
+          { name: 'Clean Dryer Vent', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Safety', parts: [] },
         ],
       },
       {
@@ -164,7 +164,7 @@ const PERSONA_TEMPLATES = {
       {
         name: 'Automobile', category: 'Vehicle', icon: '🚗',
         tasks: [
-          { name: 'Change Engine Oil', interval: 6, interval_type: 'months', is_critical: true, task_group: 'Engine', parts: [{ name: 'Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
+          { name: 'Change Engine Oil', interval: 6, interval_type: 'months', is_critical: false, task_group: 'Engine', parts: [{ name: 'Engine Oil', qty: 0 }, { name: 'Oil Filter', qty: 0 }] },
           { name: 'Replace Cabin Air Filter', interval: 12, interval_type: 'months', is_critical: false, task_group: 'Filters', parts: [{ name: 'Cabin Air Filter', qty: 0 }] },
         ],
       },
