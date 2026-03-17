@@ -26,7 +26,7 @@ def list_parts(asset_id: int = None, task_id: int = None, db: Session = Depends(
 
 @router.post("/", response_model=schemas.PartOut)
 def create_part(payload: schemas.PartCreate, asset_id: int = None, task_id: int = None,
-                db: Session = Depends(get_db), _=Depends(require_admin)):
+                db: Session = Depends(get_db), _=Depends(get_current_user)):
     part = models.Part(asset_id=asset_id, task_id=task_id, **payload.model_dump())
     db.add(part)
     db.commit()
@@ -35,7 +35,7 @@ def create_part(payload: schemas.PartCreate, asset_id: int = None, task_id: int 
 
 
 @router.put("/{part_id}", response_model=schemas.PartOut)
-def update_part(part_id: int, payload: schemas.PartCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def update_part(part_id: int, payload: schemas.PartCreate, db: Session = Depends(get_db), _=Depends(get_current_user)):
     part = db.query(models.Part).filter(models.Part.id == part_id).first()
     if not part:
         raise HTTPException(404, "Part not found")
@@ -58,7 +58,7 @@ def update_part_qty(part_id: int, payload: schemas.QtyUpdate, db: Session = Depe
 
 
 @router.delete("/{part_id}")
-def delete_part(part_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_part(part_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     part = db.query(models.Part).filter(models.Part.id == part_id).first()
     if not part:
         raise HTTPException(404, "Part not found")
