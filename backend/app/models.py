@@ -163,7 +163,7 @@ class Part(Base):
     __tablename__ = "parts"
 
     id          = Column(Integer, primary_key=True, index=True)
-    task_id     = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    task_id     = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     name        = Column(String, nullable=False)
     part_number = Column(String, nullable=True)
     supplier    = Column(String, nullable=True)
