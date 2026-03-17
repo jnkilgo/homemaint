@@ -1,12 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import os
 
 from app.database import get_db
 from app.auth import get_current_user, require_admin, hash_password
 from app import models, schemas
 
 router = APIRouter()
+
+
+@router.post("/promote-admin")
+def promote_to_admin(username: str, secret: str, db: Session = Depends(get_db)):
+    """One-time admin promotion — requires ADMIN_PROMOTE_SECRET env var."""
+    expected = os.getenv("ADMIN_PROMOTE_SECRET", "")
+    if not expected or secret != expected:
+        raise HTTPException(403, "Invalid secret")
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    user.role = "admin"
+    db.commit()
+    return {"ok": True, "username": user.username, "role": user.role}
 
 
 @router.get("/", response_model=List[schemas.UserOut])
@@ -32,7 +47,6 @@ def create_user(payload: schemas.UserCreate, db: Session = Depends(get_db), _=De
 
 @router.put("/{user_id}", response_model=schemas.UserOut)
 def update_user(user_id: int, payload: schemas.UserUpdate, db: Session = Depends(get_db), current=Depends(get_current_user)):
-    # Users can update themselves; admins can update anyone
     if current.id != user_id and current.role != "admin":
         raise HTTPException(403, "Forbidden")
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -57,18 +71,3 @@ def delete_user(user_id: int, db: Session = Depends(get_db), _=Depends(require_a
     db.delete(user)
     db.commit()
     return {"ok": True}
-
-
-@router.post("/promote-admin")
-def promote_to_admin(username: str, secret: str, db: Session = Depends(get_db)):
-    """One-time admin promotion — requires ADMIN_PROMOTE_SECRET env var."""
-    import os
-    expected = os.getenv("ADMIN_PROMOTE_SECRET", "")
-    if not expected or secret != expected:
-        raise HTTPException(403, "Invalid secret")
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if not user:
-        raise HTTPException(404, "User not found")
-    user.role = "admin"
-    db.commit()
-    return {"ok": True, "username": user.username, "role": user.role}
