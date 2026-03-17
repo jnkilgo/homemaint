@@ -1,7 +1,7 @@
 """
 Seed database with initial data.
 Runs only if the database has no users yet (idempotent).
-Pre-loads Justin's main home assets — edit to match your actual setup.
+M9: Properties now require user_id — seeded with admin user's id.
 """
 
 from app.database import SessionLocal
@@ -13,7 +13,6 @@ from datetime import date, datetime
 def seed_database():
     db = SessionLocal()
     try:
-        # Only seed if empty
         if db.query(models.User).first():
             return
 
@@ -25,12 +24,14 @@ def seed_database():
             display_name="Justin",
             password_hash=hash_password("changeme"),
             role="admin",
+            is_verified=True,  # Admin pre-verified
         )
         db.add(admin)
         db.flush()
 
         # ── Main Property ──────────────────────────────────────
         main_home = models.Property(
+            user_id=admin.id,
             name="Main Home",
             address_line1="Rogers, AR",
             property_type="primary",
@@ -42,7 +43,6 @@ def seed_database():
 
         # ── ASSETS & TASKS: MAIN HOME ──────────────────────────
 
-        # House systems asset
         house = models.Asset(
             property_id=main_home.id,
             name="House Systems",
@@ -52,7 +52,6 @@ def seed_database():
         db.add(house)
         db.flush()
 
-        # Whole home water filter
         wf_task = models.Task(
             asset_id=house.id, name="Whole Home Water Filter",
             description="20\" Big Blue housing under utility sink",
@@ -66,7 +65,6 @@ def seed_database():
             models.Part(task_id=wf_task.id, name="Carbon Filter 20\"",      part_number="Pentek CBC-20BB",   supplier="Amazon", last_price=22.00),
         ])
 
-        # RO filters
         ro_task = models.Task(
             asset_id=house.id, name="RO Filters",
             description="6-stage system, kitchen under sink",
@@ -82,7 +80,6 @@ def seed_database():
             models.Part(task_id=ro_task.id, name="Post Carbon",         part_number="Pentair EV9278-00", supplier="FiltersFast", last_price=11.00),
         ])
 
-        # HVAC asset
         hvac = models.Asset(
             property_id=main_home.id, name="HVAC System",
             category="HVAC", make="Carrier", icon="❄️",
@@ -109,7 +106,6 @@ def seed_database():
             season="spring", advance_warning_days=30,
             last_completed_at=datetime(2025, 4, 20),
         )
-        # Fix: seasonal
         hvac_service.interval_type = "seasonal"
         db.add(hvac_service)
 
@@ -123,7 +119,6 @@ def seed_database():
         db.flush()
         db.add(models.Part(task_id=smoke.id, name="9V Batteries 8-pack", part_number="Energizer 522BP-8", supplier="Costco", last_price=16.00))
 
-        # Water heater
         wh = models.Asset(
             property_id=main_home.id, name="Water Heater",
             category="Plumbing", make="Rheem", model="Performance 50",
@@ -156,7 +151,6 @@ def seed_database():
             last_completed_at=datetime(2025, 3, 1),
         ))
 
-        # ── MOWER ──────────────────────────────────────────────
         mower = models.Asset(
             property_id=main_home.id, name="Mower",
             category="Equipment", make="Husqvarna",
@@ -217,7 +211,6 @@ def seed_database():
             last_completed_at=datetime(2025, 11, 15),
         ))
 
-        # ── BOAT ───────────────────────────────────────────────
         boat = models.Asset(
             property_id=main_home.id, name="Boat",
             category="Watercraft", make="MerCruiser", model="5.0L V8 Alpha One",
@@ -293,8 +286,8 @@ def seed_database():
             last_completed_at=datetime(2025, 10, 30),
         ))
 
-        # ── Sample rental property (scaffold) ─────────────────
         rental = models.Property(
+            user_id=admin.id,
             name="123 Oak St — Rental",
             address_line1="123 Oak St",
             city="Rogers", state="AR",
@@ -331,15 +324,13 @@ def seed_database():
             last_completed_at=datetime(2025, 1, 1),
         ))
 
-        # Sample paint records for main home
         db.add_all([
-            models.PaintRecord(property_id=main_home.id, room_surface="Living Room Walls",  brand="Sherwin-Williams", color_name="Accessible Beige", color_code="SW 7036", sheen="Eggshell", date_painted=date(2022, 8, 10), painted_by="DIY"),
-            models.PaintRecord(property_id=main_home.id, room_surface="Master Bedroom",     brand="Sherwin-Williams", color_name="Repose Gray",       color_code="SW 7015", sheen="Eggshell", date_painted=date(2022, 8, 15), painted_by="DIY"),
-            models.PaintRecord(property_id=main_home.id, room_surface="All Trim / Ceilings",brand="Sherwin-Williams", color_name="Extra White",        color_code="SW 7006", sheen="Semi-Gloss", date_painted=date(2022, 8, 10), painted_by="DIY"),
-            models.PaintRecord(property_id=main_home.id, room_surface="Front Door",         brand="Sherwin-Williams", color_name="Naval",              color_code="SW 6244", sheen="Gloss",     date_painted=date(2023, 5, 1),  painted_by="DIY"),
+            models.PaintRecord(property_id=main_home.id, room_surface="Living Room Walls",   brand="Sherwin-Williams", color_name="Accessible Beige", color_code="SW 7036", sheen="Eggshell",   date_painted=date(2022, 8, 10), painted_by="DIY"),
+            models.PaintRecord(property_id=main_home.id, room_surface="Master Bedroom",      brand="Sherwin-Williams", color_name="Repose Gray",       color_code="SW 7015", sheen="Eggshell",   date_painted=date(2022, 8, 15), painted_by="DIY"),
+            models.PaintRecord(property_id=main_home.id, room_surface="All Trim / Ceilings", brand="Sherwin-Williams", color_name="Extra White",        color_code="SW 7006", sheen="Semi-Gloss", date_painted=date(2022, 8, 10), painted_by="DIY"),
+            models.PaintRecord(property_id=main_home.id, room_surface="Front Door",          brand="Sherwin-Williams", color_name="Naval",              color_code="SW 6244", sheen="Gloss",      date_painted=date(2023, 5, 1),  painted_by="DIY"),
         ])
 
-        # Sample contractor
         db.add(models.Contractor(
             name="R&R Plumbing",
             trade="Plumbing",

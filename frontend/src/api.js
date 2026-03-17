@@ -62,6 +62,9 @@ export const api = {
     return res.json()
   },
   me: () => req('GET', '/auth/me'),
+  register: (data) => req('POST', '/auth/register', data),
+  forgotPassword: (email) => req('POST', '/auth/forgot-password', { email }),
+  resetPassword: (token, new_password) => req('POST', '/auth/reset-password', { token, new_password }),
 
   // Properties
   getProperties: () => req('GET', '/properties/'),
@@ -148,7 +151,6 @@ export const api = {
 
   // Task Parts (links to spare inventory)
   getTask: (taskId) => req('GET', `/tasks/${taskId}`),
-  getTaskParts: (taskId) => req('GET', `/task-parts/?task_id=${taskId}`),
   linkTaskPart: (taskId, data) => req('POST', `/task-parts/?task_id=${taskId}`, data),
   unlinkTaskPart: (id) => req('DELETE', `/task-parts/${id}`),
 

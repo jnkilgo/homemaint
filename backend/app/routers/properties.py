@@ -11,6 +11,17 @@ from app.task_engine import get_task_status, enrich_task
 router = APIRouter()
 
 
+def _get_user_property_or_404(property_id: int, user: models.User, db: Session) -> models.Property:
+    """Fetch a property by ID, enforcing ownership."""
+    prop = db.query(models.Property).filter(
+        models.Property.id == property_id,
+        models.Property.user_id == user.id,
+    ).first()
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    return prop
+
+
 def _property_counts(prop: models.Property):
     overdue = due_soon = 0
     for asset in prop.assets:
@@ -24,8 +35,13 @@ def _property_counts(prop: models.Property):
 
 
 @router.get("/", response_model=List[schemas.PropertyOut])
-def list_properties(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    props = db.query(models.Property).order_by(models.Property.is_default.desc(), models.Property.name).all()
+def list_properties(db: Session = Depends(get_db), current=Depends(get_current_user)):
+    props = (
+        db.query(models.Property)
+        .filter(models.Property.user_id == current.id)
+        .order_by(models.Property.is_default.desc(), models.Property.name)
+        .all()
+    )
     result = []
     for p in props:
         overdue, due_soon = _property_counts(p)
@@ -38,10 +54,18 @@ def list_properties(db: Session = Depends(get_db), _=Depends(get_current_user)):
 
 
 @router.get("/default", response_model=schemas.PropertyOut)
-def get_default_property(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    prop = db.query(models.Property).filter(models.Property.is_default == True).first()
+def get_default_property(db: Session = Depends(get_db), current=Depends(get_current_user)):
+    prop = (
+        db.query(models.Property)
+        .filter(models.Property.user_id == current.id, models.Property.is_default == True)
+        .first()
+    )
     if not prop:
-        prop = db.query(models.Property).first()
+        prop = (
+            db.query(models.Property)
+            .filter(models.Property.user_id == current.id)
+            .first()
+        )
     if not prop:
         raise HTTPException(404, "No properties found")
     overdue, due_soon = _property_counts(prop)
@@ -53,10 +77,16 @@ def get_default_property(db: Session = Depends(get_db), _=Depends(get_current_us
 
 
 @router.get("/dashboard", response_model=schemas.GlobalSummary)
-def global_dashboard(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    props = db.query(models.Property).all()
-    all_assets = db.query(models.Asset).all()
-    all_tasks = db.query(models.Task).all()
+def global_dashboard(db: Session = Depends(get_db), current=Depends(get_current_user)):
+    props = db.query(models.Property).filter(models.Property.user_id == current.id).all()
+
+    # Scoped counts
+    all_assets = []
+    all_tasks = []
+    for p in props:
+        all_assets.extend(p.assets)
+        for a in p.assets:
+            all_tasks.extend(a.tasks)
 
     overdue_tasks = []
     due_soon_tasks = []
@@ -69,7 +99,6 @@ def global_dashboard(db: Session = Depends(get_db), _=Depends(get_current_user))
 
     for prop in props:
         for asset in prop.assets:
-            # Warranty alerts
             if asset.warranty_expires and asset.warranty_expires <= in_90_days:
                 warranty_expiring.append({
                     "asset_id": asset.id,
@@ -80,12 +109,11 @@ def global_dashboard(db: Session = Depends(get_db), _=Depends(get_current_user))
                     "days_remaining": (asset.warranty_expires - today).days,
                 })
 
-            # Aging system alerts
             if asset.install_date and asset.expected_lifespan_years:
                 replace_date = date(
                     asset.install_date.year + asset.expected_lifespan_years,
                     asset.install_date.month,
-                    asset.install_date.day
+                    asset.install_date.day,
                 )
                 if replace_date <= in_2_years:
                     aging_systems.append({
@@ -134,10 +162,8 @@ def global_dashboard(db: Session = Depends(get_db), _=Depends(get_current_user))
 
 
 @router.get("/{property_id}", response_model=schemas.PropertyOut)
-def get_property(property_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
-    if not prop:
-        raise HTTPException(404, "Property not found")
+def get_property(property_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    prop = _get_user_property_or_404(property_id, current, db)
     overdue, due_soon = _property_counts(prop)
     out = schemas.PropertyOut.model_validate(prop)
     out.asset_count = len(prop.assets)
@@ -147,11 +173,13 @@ def get_property(property_id: int, db: Session = Depends(get_db), _=Depends(get_
 
 
 @router.post("/", response_model=schemas.PropertyOut)
-def create_property(payload: schemas.PropertyCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def create_property(payload: schemas.PropertyCreate, db: Session = Depends(get_db), current=Depends(get_current_user)):
     if payload.is_default:
-        # Unset existing default
-        db.query(models.Property).filter(models.Property.is_default == True).update({"is_default": False})
-    prop = models.Property(**payload.model_dump())
+        db.query(models.Property).filter(
+            models.Property.user_id == current.id,
+            models.Property.is_default == True,
+        ).update({"is_default": False})
+    prop = models.Property(**payload.model_dump(), user_id=current.id)
     db.add(prop)
     db.commit()
     db.refresh(prop)
@@ -163,12 +191,13 @@ def create_property(payload: schemas.PropertyCreate, db: Session = Depends(get_d
 
 
 @router.put("/{property_id}", response_model=schemas.PropertyOut)
-def update_property(property_id: int, payload: schemas.PropertyUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
-    if not prop:
-        raise HTTPException(404, "Property not found")
+def update_property(property_id: int, payload: schemas.PropertyUpdate, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    prop = _get_user_property_or_404(property_id, current, db)
     if payload.is_default:
-        db.query(models.Property).filter(models.Property.is_default == True).update({"is_default": False})
+        db.query(models.Property).filter(
+            models.Property.user_id == current.id,
+            models.Property.is_default == True,
+        ).update({"is_default": False})
     for k, v in payload.model_dump(exclude_none=True).items():
         setattr(prop, k, v)
     db.commit()
@@ -182,10 +211,8 @@ def update_property(property_id: int, payload: schemas.PropertyUpdate, db: Sessi
 
 
 @router.delete("/{property_id}")
-def delete_property(property_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
-    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
-    if not prop:
-        raise HTTPException(404, "Property not found")
+def delete_property(property_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    prop = _get_user_property_or_404(property_id, current, db)
     db.delete(prop)
     db.commit()
     return {"ok": True}

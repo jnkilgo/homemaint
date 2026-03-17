@@ -22,9 +22,11 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-
 import { api, getToken, getUser, clearToken } from './api'
 import Login from './views/Login'
+import Register from './views/Register'
+import ForgotPassword from './views/ForgotPassword'
+import ResetPassword from './views/ResetPassword'
 import Dashboard from './views/Dashboard'
 import PropertyView from './views/PropertyView'
 import PaintView from './views/PaintView'
@@ -44,7 +46,6 @@ const NAV = [
 function Sidebar({ collapsed, setCollapsed, view, setView, properties, currentPropId, setCurrentPropId, user, isMobile, mobileOpen, setMobileOpen }) {
   const sidebarRef = useRef(null)
 
-  // Close mobile drawer on outside click
   useEffect(() => {
     if (!isMobile || !mobileOpen) return
     function handle(e) {
@@ -61,11 +62,8 @@ function Sidebar({ collapsed, setCollapsed, view, setView, properties, currentPr
     if (isMobile) setMobileOpen(false)
   }
 
-  const show = isMobile ? mobileOpen : true
-
   return (
     <>
-      {/* Mobile overlay backdrop */}
       {isMobile && mobileOpen && (
         <div onClick={() => setMobileOpen(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
@@ -74,7 +72,6 @@ function Sidebar({ collapsed, setCollapsed, view, setView, properties, currentPr
       )}
 
       <nav ref={sidebarRef} className={`sidebar ${collapsed && !isMobile ? 'collapsed' : ''} ${isMobile ? 'mobile' : ''} ${isMobile && mobileOpen ? 'mobile-open' : ''}`}>
-        {/* Logo + collapse toggle */}
         <div className="sidebar-logo">
           {(!collapsed || isMobile) && (
             <div>
@@ -92,11 +89,9 @@ function Sidebar({ collapsed, setCollapsed, view, setView, properties, currentPr
           )}
         </div>
 
-        {/* Nav items */}
         <div className="sidebar-section">
           {NAV.map(item => {
             const isActive = view === item.id
-            // For Properties, also show overdue badge
             const overdueTotal = item.id === 'property'
               ? properties.reduce((sum, p) => sum + (p.overdue_count || 0), 0)
               : 0
@@ -125,10 +120,6 @@ function Sidebar({ collapsed, setCollapsed, view, setView, properties, currentPr
           })}
         </div>
 
-        {/* Property switcher — only when Properties is active */}
-
-
-        {/* User footer */}
         {(!collapsed || isMobile) && (
           <div className="sidebar-footer">
             <span>{user?.display_name}</span>
@@ -141,15 +132,23 @@ function Sidebar({ collapsed, setCollapsed, view, setView, properties, currentPr
 
 const VIEW_TITLES = {
   dashboard: 'Dashboard',
-  property: null, // dynamic
+  property: null,
   paint: 'Paint Colors',
   contractors: 'Contractors',
   settings: 'Settings',
 }
 
+// Detect if URL has a reset token — show ResetPassword screen on load
+function getInitialAuthView() {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('token') && window.location.pathname.includes('reset')) return 'reset'
+  return 'login'
+}
+
 export default function App() {
   const [authed, setAuthed]             = useState(!!getToken())
   const [user, setUser]                 = useState(getUser())
+  const [authView, setAuthView]         = useState(getInitialAuthView) // login | register | forgot | reset
   const [properties, setProperties]     = useState([])
   const [loading, setLoading]           = useState(true)
   const [view, setView]                 = useState('property')
@@ -159,7 +158,6 @@ export default function App() {
   const [addProperty, setAddProperty]   = useState(false)
   const [isMobile, setIsMobile]         = useState(window.innerWidth < 768)
 
-  // Track viewport width
   useEffect(() => {
     function onResize() { setIsMobile(window.innerWidth < 768) }
     window.addEventListener('resize', onResize)
@@ -184,7 +182,6 @@ export default function App() {
   const [usageReminders, setUsageReminders] = useState([])
   const [showReminderPopup, setShowReminderPopup] = useState(false)
 
-  // Check usage reminders once per session after login
   useEffect(() => {
     if (!authed) return
     const checked = sessionStorage.getItem('usage_reminders_checked')
@@ -204,7 +201,14 @@ export default function App() {
     if (assetId) setJumpToAssetId(assetId)
   }
 
-  if (!authed) return <Login onLogin={handleLogin} />
+  // ── Unauthenticated screens ──────────────────────────────────────────────────
+  if (!authed) {
+    if (authView === 'register') return <Register onSwitchToLogin={() => setAuthView('login')} />
+    if (authView === 'forgot')   return <ForgotPassword onSwitchToLogin={() => setAuthView('login')} />
+    if (authView === 'reset')    return <ResetPassword onSwitchToLogin={() => setAuthView('login')} />
+    return <Login onLogin={handleLogin} onRegister={() => setAuthView('register')} onForgot={() => setAuthView('forgot')} />
+  }
+
   if (loading) return <LoadingSpinner />
 
   const currentProp = properties.find(p => p.id === currentPropId)
@@ -250,6 +254,7 @@ export default function App() {
           </div>
         </div>
       )}
+
       <Sidebar
         collapsed={collapsed} setCollapsed={setCollapsed}
         view={view} setView={setView}
@@ -262,17 +267,12 @@ export default function App() {
 
       <div className="main">
         <div className="topbar">
-          {/* Mobile hamburger */}
           {isMobile && (
             <button className="topbar-hamburger" onClick={() => setMobileOpen(true)}>
               <span /><span /><span />
             </button>
           )}
-
           <span className="topbar-title">{title}</span>
-
-
-
           {!isMobile && (
             <div className="topbar-actions">
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>

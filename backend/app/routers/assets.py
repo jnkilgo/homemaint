@@ -4,18 +4,31 @@ from typing import List
 from datetime import date
 
 from app.database import get_db
-from app.auth import get_current_user, require_admin
+from app.auth import get_current_user
 from app import models, schemas
 from app.task_engine import get_task_status
 
 router = APIRouter()
 
 
+def _get_user_asset_or_404(asset_id: int, user: models.User, db: Session) -> models.Asset:
+    """Fetch an asset by ID, enforcing ownership via property chain."""
+    asset = (
+        db.query(models.Asset)
+        .join(models.Property, models.Asset.property_id == models.Property.id)
+        .filter(models.Asset.id == asset_id, models.Property.user_id == user.id)
+        .first()
+    )
+    if not asset:
+        raise HTTPException(404, "Asset not found")
+    return asset
+
+
 def _enrich_asset(asset: models.Asset) -> schemas.AssetOut:
     out = schemas.AssetOut.model_validate(asset)
     overdue = sum(1 for t in asset.tasks if get_task_status(t, asset)[0] == "overdue")
-    out.task_count = len(asset.tasks)
     due_soon = sum(1 for t in asset.tasks if get_task_status(t, asset)[0] in ("due_soon", "snoozed"))
+    out.task_count = len(asset.tasks)
     out.overdue_count = overdue
     out.due_soon_count = due_soon
 
@@ -29,24 +42,30 @@ def _enrich_asset(asset: models.Asset) -> schemas.AssetOut:
 
 
 @router.get("/", response_model=List[schemas.AssetOut])
-def list_assets(property_id: int = None, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    q = db.query(models.Asset)
+def list_assets(property_id: int = None, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    q = (
+        db.query(models.Asset)
+        .join(models.Property, models.Asset.property_id == models.Property.id)
+        .filter(models.Property.user_id == current.id)
+    )
     if property_id:
         q = q.filter(models.Asset.property_id == property_id)
     return [_enrich_asset(a) for a in q.all()]
 
 
 @router.get("/{asset_id}", response_model=schemas.AssetOut)
-def get_asset(asset_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    asset = db.query(models.Asset).filter(models.Asset.id == asset_id).first()
-    if not asset:
-        raise HTTPException(404, "Asset not found")
+def get_asset(asset_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    asset = _get_user_asset_or_404(asset_id, current, db)
     return _enrich_asset(asset)
 
 
 @router.post("/", response_model=schemas.AssetOut)
-def create_asset(payload: schemas.AssetCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    prop = db.query(models.Property).filter(models.Property.id == payload.property_id).first()
+def create_asset(payload: schemas.AssetCreate, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    # Verify the target property belongs to current user
+    prop = db.query(models.Property).filter(
+        models.Property.id == payload.property_id,
+        models.Property.user_id == current.id,
+    ).first()
     if not prop:
         raise HTTPException(404, "Property not found")
     asset = models.Asset(**payload.model_dump())
@@ -58,16 +77,13 @@ def create_asset(payload: schemas.AssetCreate, db: Session = Depends(get_db), _=
 
 
 @router.put("/{asset_id}", response_model=schemas.AssetOut)
-def update_asset(asset_id: int, payload: schemas.AssetUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    asset = db.query(models.Asset).filter(models.Asset.id == asset_id).first()
-    if not asset:
-        raise HTTPException(404, "Asset not found")
-    SKIP = set()
-    data = {k: v for k, v in payload.model_dump().items() if k not in SKIP}
-    if data.get('custom_fields') is not None:
-        data['custom_fields'] = __import__('json').dumps(data['custom_fields'])
-    elif 'custom_fields' in data:
-        data['custom_fields'] = None
+def update_asset(asset_id: int, payload: schemas.AssetUpdate, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    asset = _get_user_asset_or_404(asset_id, current, db)
+    data = payload.model_dump()
+    if data.get("custom_fields") is not None:
+        data["custom_fields"] = __import__("json").dumps(data["custom_fields"])
+    elif "custom_fields" in data:
+        data["custom_fields"] = None
     for k, v in data.items():
         setattr(asset, k, v)
     db.flush()
@@ -77,10 +93,8 @@ def update_asset(asset_id: int, payload: schemas.AssetUpdate, db: Session = Depe
 
 
 @router.delete("/{asset_id}")
-def delete_asset(asset_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
-    asset = db.query(models.Asset).filter(models.Asset.id == asset_id).first()
-    if not asset:
-        raise HTTPException(404, "Asset not found")
+def delete_asset(asset_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    asset = _get_user_asset_or_404(asset_id, current, db)
     db.delete(asset)
     db.flush()
     db.commit()
@@ -89,18 +103,8 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db), _=Depends(require
 
 @router.put("/{asset_id}/usage", response_model=schemas.AssetOut)
 def update_usage(asset_id: int, payload: schemas.UsageLogCreate, db: Session = Depends(get_db), current=Depends(get_current_user)):
-    """Update current hours or miles for a usage-tracked asset."""
-    asset = db.query(models.Asset).filter(models.Asset.id == asset_id).first()
-    if not asset:
-        raise HTTPException(404, "Asset not found")
-
-    # Determine if this is hours or miles based on existing data
-    if True:
-        asset.current_hours = payload.value
-    else:
-        asset.current_miles = payload.value
-
-    # Log it
+    asset = _get_user_asset_or_404(asset_id, current, db)
+    asset.current_hours = payload.value
     log = models.UsageLog(
         asset_id=asset_id,
         value=payload.value,
@@ -113,8 +117,10 @@ def update_usage(asset_id: int, payload: schemas.UsageLogCreate, db: Session = D
     db.refresh(asset)
     return _enrich_asset(asset)
 
+
 @router.get("/{asset_id}/usage_logs", response_model=List[schemas.UsageLogOut])
-def get_usage_logs(asset_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_usage_logs(asset_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    _get_user_asset_or_404(asset_id, current, db)  # ownership check
     logs = (
         db.query(models.UsageLog)
         .filter(models.UsageLog.asset_id == asset_id)
@@ -124,14 +130,15 @@ def get_usage_logs(asset_id: int, db: Session = Depends(get_db), _=Depends(get_c
     )
     return logs
 
+
 @router.delete("/{asset_id}/usage_logs/{log_id}", status_code=204)
-def delete_usage_log(asset_id: int, log_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def delete_usage_log(asset_id: int, log_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    _get_user_asset_or_404(asset_id, current, db)  # ownership check
     log = db.query(models.UsageLog).filter(
         models.UsageLog.id == log_id,
-        models.UsageLog.asset_id == asset_id
+        models.UsageLog.asset_id == asset_id,
     ).first()
     if not log:
         raise HTTPException(404, "Usage log not found")
     db.delete(log)
     db.commit()
-

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api, setToken, setUser } from '../api'
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onRegister, onForgot }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -56,6 +56,11 @@ export default function Login({ onLogin }) {
                   onChange={e => setPassword(e.target.value)} required
                 />
               </div>
+              <div style={{ textAlign: 'right', marginTop: '-8px', marginBottom: '12px' }}>
+                <button type="button" className="btn-link" style={{ fontSize: '12px' }} onClick={onForgot}>
+                  Forgot password?
+                </button>
+              </div>
               <button
                 type="submit" className="btn btn-primary" disabled={loading}
                 style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}
@@ -64,6 +69,11 @@ export default function Login({ onLogin }) {
               </button>
             </form>
           </div>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          Don't have an account?{' '}
+          <button className="btn-link" onClick={onRegister}>Create one</button>
         </div>
       </div>
     </div>
