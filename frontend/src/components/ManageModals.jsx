@@ -460,6 +460,7 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
     season:              task?.season || 'spring',
     advance_warning_days:task?.advance_warning_days ?? 14,
     is_critical:         task?.is_critical || false,
+    tools:               task?.tools || '',
   })
   const [assetParts, setAssetParts] = useState([])   // all parts on this asset
   const [linkedIds, setLinkedIds] = useState(new Set()) // task_part ids currently linked
@@ -499,6 +500,7 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
         season: values.interval_type === 'seasonal' ? values.season : null,
         advance_warning_days: parseInt(values.advance_warning_days),
         is_critical: values.is_critical,
+        tools: values.tools || null,
       }
       const result = isEdit ? await api.updateTask(task.id, data) : await api.createTask(data)
       const taskId = result.id
@@ -550,6 +552,12 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
           <label htmlFor="is_critical" style={{ fontWeight: 600, fontSize: '13px', cursor: 'pointer', display: 'block' }}>🔴 Critical alert</label>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Send urgent push notification when overdue. Use for safety-critical items only.</div>
         </div>
+      </div>
+
+      <SectionLabel>Tools Required</SectionLabel>
+      <div className="form-group" style={{ marginBottom: '16px' }}>
+        <input className="form-input" placeholder="e.g. Socket wrench, oil drain pan, funnel" {...bind('tools')} />
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Optional — comma separated list of tools needed</div>
       </div>
 
       <SectionLabel>Required Parts</SectionLabel>
