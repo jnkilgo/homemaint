@@ -47,12 +47,17 @@ const PERSONAS = [
   },
 ]
 
-const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Multi-Family', 'Rental', 'Vacation', 'Other']
+const PROPERTY_TYPES = [
+  { label: 'Primary Home', value: 'primary' },
+  { label: 'Single Family Rental', value: 'rental_sfh' },
+  { label: 'Multi-Family Rental', value: 'rental_multi' },
+  { label: 'Vacation Home', value: 'vacation' },
+]
 
 export default function OnboardingWizard({ onComplete, onSkip }) {
   const [step, setStep] = useState(0) // 0=welcome, 1=property, 2=assets, 3=done
   const [persona, setPersona] = useState(null)
-  const [property, setProperty] = useState({ name: '', address: '', type: 'Single Family' })
+  const [property, setProperty] = useState({ name: '', address: '', type: 'primary' })
   const [selectedAssets, setSelectedAssets] = useState([])
   const [customAsset, setCustomAsset] = useState('')
   const [customAssets, setCustomAssets] = useState([])
@@ -84,8 +89,8 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
       // Create property
       const prop = await api.createProperty({
         name: property.name || 'My Home',
-        address: property.address || '',
-        type: property.type,
+        address_line1: property.address || '',
+        property_type: property.type,
         is_default: true,
       })
       setSavedPropId(prop.id)
@@ -97,10 +102,10 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
       ]
 
       for (const asset of assetsToCreate) {
-        await api.createAsset(prop.id, {
+        await api.createAsset({
+          property_id: prop.id,
           name: asset.name,
           category: asset.category,
-          notes: '',
         })
       }
 
@@ -224,7 +229,7 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
                 value={property.type}
                 onChange={e => setProperty(p => ({ ...p, type: e.target.value }))}
               >
-                {PROPERTY_TYPES.map(t => <option key={t}>{t}</option>)}
+                {PROPERTY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
