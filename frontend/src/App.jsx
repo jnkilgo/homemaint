@@ -32,6 +32,7 @@ import PropertyView from './views/PropertyView'
 import PaintView from './views/PaintView'
 import ContractorsView from './views/ContractorsView'
 import SettingsView from './views/SettingsView'
+import OnboardingWizard from './views/OnboardingWizard'
 import { LoadingSpinner } from './components/shared'
 import { PropertyModal } from './components/ManageModals'
 
@@ -138,7 +139,6 @@ const VIEW_TITLES = {
   settings: 'Settings',
 }
 
-// Detect if URL has a reset token — show ResetPassword screen on load
 function getInitialAuthView() {
   const params = new URLSearchParams(window.location.search)
   if (params.get('token') && window.location.pathname.includes('reset')) return 'reset'
@@ -148,7 +148,7 @@ function getInitialAuthView() {
 export default function App() {
   const [authed, setAuthed]             = useState(!!getToken())
   const [user, setUser]                 = useState(getUser())
-  const [authView, setAuthView]         = useState(getInitialAuthView) // login | register | forgot | reset
+  const [authView, setAuthView]         = useState(getInitialAuthView)
   const [properties, setProperties]     = useState([])
   const [loading, setLoading]           = useState(true)
   const [view, setView]                 = useState('property')
@@ -157,6 +157,7 @@ export default function App() {
   const [mobileOpen, setMobileOpen]     = useState(false)
   const [addProperty, setAddProperty]   = useState(false)
   const [isMobile, setIsMobile]         = useState(window.innerWidth < 768)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
     function onResize() { setIsMobile(window.innerWidth < 768) }
@@ -169,7 +170,12 @@ export default function App() {
     api.getProperties().then(props => {
       setProperties(props)
       const def = props.find(p => p.is_default) || props[0]
-      if (def) setCurrentPropId(def.id)
+      if (def) {
+        setCurrentPropId(def.id)
+      } else {
+        // No properties — show onboarding
+        setShowOnboarding(true)
+      }
     }).catch(() => {
       clearToken(); setAuthed(false)
     }).finally(() => setLoading(false))
@@ -201,6 +207,20 @@ export default function App() {
     if (assetId) setJumpToAssetId(assetId)
   }
 
+  function handleOnboardingComplete(newPropId) {
+    setShowOnboarding(false)
+    api.getProperties().then(props => {
+      setProperties(props)
+      setCurrentPropId(newPropId)
+      setView('property')
+    })
+  }
+
+  function handleOnboardingSkip() {
+    setShowOnboarding(false)
+    setView('dashboard')
+  }
+
   // ── Unauthenticated screens ──────────────────────────────────────────────────
   if (!authed) {
     if (authView === 'register') return <Register onSwitchToLogin={() => setAuthView('login')} />
@@ -210,6 +230,16 @@ export default function App() {
   }
 
   if (loading) return <LoadingSpinner />
+
+  // ── Onboarding wizard ────────────────────────────────────────────────────────
+  if (showOnboarding) {
+    return (
+      <OnboardingWizard
+        onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingSkip}
+      />
+    )
+  }
 
   const currentProp = properties.find(p => p.id === currentPropId)
   const title = view === 'property' && currentProp ? currentProp.name : VIEW_TITLES[view] || ''
@@ -283,11 +313,29 @@ export default function App() {
         </div>
 
         <div className="content">
-          {view === 'dashboard'   && <Dashboard onNavigate={navigate} />}
+          {view === 'dashboard'   && (
+            <Dashboard
+              onNavigate={navigate}
+              hasNoProperties={properties.length === 0}
+              onStartOnboarding={() => setShowOnboarding(true)}
+              onAddProperty={() => setAddProperty(true)}
+            />
+          )}
           {view === 'property'    && currentPropId && <PropertyView key={currentPropId} propertyId={currentPropId} properties={properties} onSwitchProperty={setCurrentPropId} onAddProperty={() => setAddProperty(true)} jumpToAssetId={jumpToAssetId} onJumpHandled={() => setJumpToAssetId(null)} />}
+          {view === 'property'    && !currentPropId && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}>
+              <div style={{ fontSize: 48 }}>🏠</div>
+              <h2 style={{ color: 'var(--text)', margin: 0 }}>No property selected</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add your first property to get started</p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn btn-ghost" onClick={() => setShowOnboarding(true)}>Setup Wizard</button>
+                <button className="btn btn-primary" onClick={() => setAddProperty(true)}>+ Add Property</button>
+              </div>
+            </div>
+          )}
           {view === 'paint'       && <PaintView propertyId={currentPropId} properties={properties} />}
           {view === 'contractors' && <ContractorsView />}
-          {view === 'settings'    && <SettingsView onLogout={handleLogout} properties={properties} />}
+          {view === 'settings'    && <SettingsView onLogout={handleLogout} properties={properties} onStartOnboarding={() => setShowOnboarding(true)} />}
         </div>
       </div>
 

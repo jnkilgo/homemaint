@@ -123,7 +123,7 @@ function TaskDetailModal({ task, onClose, onNavigate }) {
   )
 }
 
-export default function Dashboard({ onNavigate }) {
+export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboarding, onAddProperty }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState(null)
@@ -134,6 +134,32 @@ export default function Dashboard({ onNavigate }) {
 
   if (loading) return <LoadingSpinner />
   if (!data) return <div className="empty"><div className="empty-text">Failed to load dashboard</div></div>
+  if (hasNoProperties) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, textAlign: 'center' }}>
+      <div style={{ fontSize: 56 }}>🏠</div>
+      <h2 style={{ color: 'var(--text)', margin: 0 }}>Welcome to HomeMaint</h2>
+      <p style={{ color: 'var(--text-muted)', margin: 0, maxWidth: 320 }}>
+        You don't have any properties yet. Use the setup wizard to get started quickly, or add a property manually.
+      </p>
+      <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+        <button className="btn btn-ghost" onClick={onAddProperty}>+ Add Property</button>
+        <button className="btn btn-primary" onClick={onStartOnboarding}>Setup Wizard →</button>
+      </div>
+    </div>
+  )
+  if (hasNoProperties) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, textAlign: 'center' }}>
+      <div style={{ fontSize: 56 }}>🏠</div>
+      <h2 style={{ color: 'var(--text)', margin: 0 }}>Welcome to HomeMaint</h2>
+      <p style={{ color: 'var(--text-muted)', margin: 0, maxWidth: 320 }}>
+        You don't have any properties yet. Use the setup wizard to get started quickly, or add a property manually.
+      </p>
+      <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+        <button className="btn btn-ghost" onClick={onAddProperty}>+ Add Property</button>
+        <button className="btn btn-primary" onClick={onStartOnboarding}>Setup Wizard →</button>
+      </div>
+    </div>
+  )
 
   return (
     <div>
