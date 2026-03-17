@@ -118,6 +118,20 @@ function TaskDetailModal({ task, onClose, onNavigate }) {
         {parts.length === 0 && (
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No parts linked to this task.</div>
         )}
+
+        {/* Tools needed */}
+        {fullTask?.tools && (
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Tools needed</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {fullTask.tools.split(',').map((t, i) => (
+                <span key={i} style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-secondary)' }}>
+                  🔧 {t.trim()}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </>}
     </Modal>
   )

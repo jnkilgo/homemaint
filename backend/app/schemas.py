@@ -204,6 +204,7 @@ class TaskCreate(BaseModel):
     advance_warning_days: int = 14
     is_critical: bool = False
     task_group: Optional[str] = None
+    tools: Optional[str] = None
     parts: Optional[List[PartCreate]] = []
 
 class TaskUpdate(BaseModel):
@@ -217,6 +218,8 @@ class TaskUpdate(BaseModel):
     snoozed_until: Optional[date] = None
     task_group: Optional[str] = None
     sort_order: Optional[int] = None
+    tools: Optional[str] = None
+    tools: Optional[str] = None
 
 class TaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -234,6 +237,7 @@ class TaskOut(BaseModel):
     snoozed_until: Optional[date] = None
     task_group: Optional[str] = None
     sort_order: int = 0
+    tools: Optional[str] = None
     created_at: datetime
 
     status: Optional[str] = "unknown"
