@@ -46,3 +46,5 @@ uploads/
 # IDE
 .vscode/
 .idea/
+backend/data/
+frontend/package-lock.json
