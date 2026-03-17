@@ -57,3 +57,18 @@ def delete_user(user_id: int, db: Session = Depends(get_db), _=Depends(require_a
     db.delete(user)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/promote-admin")
+def promote_to_admin(username: str, secret: str, db: Session = Depends(get_db)):
+    """One-time admin promotion — requires ADMIN_PROMOTE_SECRET env var."""
+    import os
+    expected = os.getenv("ADMIN_PROMOTE_SECRET", "")
+    if not expected or secret != expected:
+        raise HTTPException(403, "Invalid secret")
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    user.role = "admin"
+    db.commit()
+    return {"ok": True, "username": user.username, "role": user.role}
