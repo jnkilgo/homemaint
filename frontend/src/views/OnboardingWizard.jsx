@@ -246,6 +246,7 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
           property_id: prop.id,
           name: asset.name,
           category: asset.category,
+          icon: asset.icon || null,
         })
 
         for (const task of (asset.tasks || [])) {
