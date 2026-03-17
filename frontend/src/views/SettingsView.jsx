@@ -449,6 +449,22 @@ function UsageReminderSettings() {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <div className="card-header"><span className="card-title">Setup</span></div>
+        <div className="card-body">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Property Setup Wizard</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Add a new property with suggested assets based on your profile
+              </div>
+            </div>
+            <button className="btn btn-primary" onClick={onStartOnboarding}>Launch Wizard →</button>
+          </div>
+        </div>
+      </div>
+
+
       <Toggle
         checked={settings.usage_reminder_ha_notify}
         onChange={v => update({ usage_reminder_ha_notify: v })}
@@ -590,7 +606,7 @@ function BackupRestore() {
   )
 }
 
-export default function SettingsView({ onLogout, properties = [] }) {
+export default function SettingsView({ onLogout, properties = [], onStartOnboarding }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
