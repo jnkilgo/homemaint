@@ -1,7 +1,5 @@
 """
-Database configuration - SQLite via SQLAlchemy
-DB file location controlled by HOMEMAINT_DB_PATH env var
-Default: ./homemaint.db (relative to working directory)
+Database configuration — supports SQLite (self-hosted) and PostgreSQL (Railway/cloud).
 """
 
 from sqlalchemy import create_engine
@@ -9,12 +7,23 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-DB_PATH = os.getenv("HOMEMAINT_DB_PATH", "./homemaint.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Railway uses postgres:// but SQLAlchemy requires postgresql://
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if not DATABASE_URL:
+    DB_PATH = os.getenv("HOMEMAINT_DB_PATH", "./data/homemaint.db")
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Required for SQLite + FastAPI
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -23,7 +32,6 @@ Base = declarative_base()
 
 
 def get_db():
-    """FastAPI dependency — yields a DB session and closes it after the request."""
     db = SessionLocal()
     try:
         yield db
