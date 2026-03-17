@@ -1,27 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-import os
 
 from app.database import get_db
 from app.auth import get_current_user, require_admin, hash_password
 from app import models, schemas
 
 router = APIRouter()
-
-
-@router.post("/promote-admin")
-def promote_to_admin(username: str, secret: str, db: Session = Depends(get_db)):
-    """One-time admin promotion — requires ADMIN_PROMOTE_SECRET env var."""
-    expected = os.getenv("ADMIN_PROMOTE_SECRET", "")
-    if not expected or secret != expected:
-        raise HTTPException(403, "Invalid secret")
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if not user:
-        raise HTTPException(404, "User not found")
-    user.role = "admin"
-    db.commit()
-    return {"ok": True, "username": user.username, "role": user.role}
 
 
 @router.get("/", response_model=List[schemas.UserOut])
