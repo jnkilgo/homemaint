@@ -182,6 +182,7 @@ export const api = {
 
   // Users
   getUsers: () => req('GET', '/users/'),
+  getUserStats: () => req('GET', '/users/stats'),
   createUser: (data) => req('POST', '/users/', data),
   updateUser: (id, data) => req('PUT', `/users/${id}`, data),
   deleteUser: (id) => req('DELETE', `/users/${id}`),

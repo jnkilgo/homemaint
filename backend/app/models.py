@@ -1,11 +1,12 @@
 """
 SQLAlchemy ORM models — maps to all HomeMaint database tables
 M9: Added user_id FK to Property for multi-tenant isolation
+M10: Added user tracking fields + UserActivity model
 """
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float, Date, DateTime,
-    ForeignKey, Text, Enum
+    ForeignKey, Text, Enum, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -43,22 +44,26 @@ class Season(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id            = Column(Integer, primary_key=True, index=True)
-    username      = Column(String, unique=True, nullable=False, index=True)
-    email         = Column(String, unique=True, nullable=True, index=True)
-    display_name  = Column(String, nullable=False)
-    password_hash = Column(String, nullable=False)
-    role          = Column(String, default="member", nullable=False)
-    is_verified   = Column(Boolean, default=False, nullable=False)
-    verify_token  = Column(String, nullable=True)
-    reset_token   = Column(String, nullable=True)
+    id                  = Column(Integer, primary_key=True, index=True)
+    username            = Column(String, unique=True, nullable=False, index=True)
+    email               = Column(String, unique=True, nullable=True, index=True)
+    display_name        = Column(String, nullable=False)
+    password_hash       = Column(String, nullable=False)
+    role                = Column(String, default="member", nullable=False)
+    is_verified         = Column(Boolean, default=False, nullable=False)
+    verify_token        = Column(String, nullable=True)
+    reset_token         = Column(String, nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
-    created_at    = Column(DateTime, server_default=func.now())
+    last_login_at       = Column(DateTime, nullable=True)
+    last_seen_at        = Column(DateTime, nullable=True)
+    login_count         = Column(Integer, default=0, nullable=False)
+    created_at          = Column(DateTime, server_default=func.now())
 
     properties      = relationship("Property", back_populates="owner")
     completion_logs = relationship("CompletionLog", back_populates="user")
     asset_notes     = relationship("AssetNote", back_populates="user")
     usage_logs      = relationship("UsageLog", back_populates="user")
+    activity_logs   = relationship("UserActivity", back_populates="user")
 
 
 class Property(Base):
@@ -325,6 +330,7 @@ class AppSetting(Base):
     key   = Column(String, primary_key=True)
     value = Column(Text, nullable=True)
 
+
 class AssetLoan(Base):
     __tablename__ = "asset_loans"
 
@@ -338,3 +344,19 @@ class AssetLoan(Base):
     created_at           = Column(DateTime, server_default=func.now())
 
     asset = relationship("Asset", back_populates="loans")
+
+
+class UserActivity(Base):
+    __tablename__ = "user_activity"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    user_id     = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date        = Column(Date, nullable=False)
+    action_type = Column(String, nullable=False)
+    count       = Column(Integer, default=1, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'date', 'action_type', name='uq_user_activity'),
+    )
+
+    user = relationship("User", back_populates="activity_logs")

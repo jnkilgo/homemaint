@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime, date as date_type
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -39,6 +40,32 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
+
+    # Update login tracking fields
+    now = datetime.utcnow()
+    user.last_login_at = now
+    user.last_seen_at = now
+    user.login_count = (user.login_count or 0) + 1
+
+    # Upsert daily activity record for login
+    today = date_type.today()
+    activity = db.query(models.UserActivity).filter(
+        models.UserActivity.user_id == user.id,
+        models.UserActivity.date == today,
+        models.UserActivity.action_type == "login",
+    ).first()
+    if activity:
+        activity.count += 1
+    else:
+        db.add(models.UserActivity(
+            user_id=user.id,
+            date=today,
+            action_type="login",
+            count=1,
+        ))
+
+    db.commit()
+
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer", "user": user}
 

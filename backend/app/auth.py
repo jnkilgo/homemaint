@@ -1,6 +1,7 @@
 """
 Authentication helpers — JWT tokens + bcrypt password hashing
 Secret key loaded from HOMEMAINT_SECRET env var (required in production)
+M10: Added last_seen_at touch in get_current_user (throttled 60s)
 """
 
 from datetime import datetime, timedelta
@@ -58,6 +59,13 @@ def get_current_user(
     user = db.query(models.User).filter(models.User.username == username).first()
     if user is None:
         raise credentials_exception
+
+    # Touch last_seen_at — throttled to once per 60 seconds to avoid write storms
+    now = datetime.utcnow()
+    if user.last_seen_at is None or (now - user.last_seen_at).total_seconds() > 60:
+        user.last_seen_at = now
+        db.commit()
+
     return user
 
 
