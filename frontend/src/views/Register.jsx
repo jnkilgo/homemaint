@@ -55,7 +55,7 @@ export default function Register({ onSwitchToLogin }) {
             {success ? (
               <div>
                 <div className="alert alert-success" style={{ marginBottom: '16px' }}>
-                  Account created! Check your email to verify your address before signing in.
+                  Account created! You can now sign in.
                 </div>
                 <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}
                   onClick={onSwitchToLogin}>
@@ -72,9 +72,9 @@ export default function Register({ onSwitchToLogin }) {
                       onChange={set('username')} required />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Email</label>
+                    <label className="form-label">Email <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
                     <input type="email" value={form.email} autoComplete="email"
-                      onChange={set('email')} required />
+                      onChange={set('email')} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Display name</label>

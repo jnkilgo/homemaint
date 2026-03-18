@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -16,7 +17,7 @@ REGISTRATION_OPEN = True  # Set False to disable self-signup
 
 class RegisterRequest(BaseModel):
     username: str
-    email: EmailStr
+    email: Optional[str] = None
     display_name: str
     password: str
 
@@ -55,7 +56,7 @@ def register(payload: RegisterRequest, background_tasks: BackgroundTasks, db: Se
     if db.query(models.User).filter(models.User.username == payload.username).first():
         raise HTTPException(400, "Username already taken")
 
-    if db.query(models.User).filter(models.User.email == payload.email).first():
+    if payload.email and db.query(models.User).filter(models.User.email == payload.email).first():
         raise HTTPException(400, "Email already registered")
 
     verify_token = secrets.token_urlsafe(32)
