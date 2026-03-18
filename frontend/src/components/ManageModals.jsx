@@ -45,7 +45,7 @@ function SectionLabel({ children }) {
   )
 }
 
-export function PropertyModal({ property, onClose, onSaved }) {
+export function PropertyModal({ property, onClose, onSaved, onDelete }) {
   const isEdit = !!property
   const { values, set, bind } = useForm({
     name:          property?.name || '',
@@ -61,6 +61,7 @@ export function PropertyModal({ property, onClose, onSaved }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }
@@ -76,8 +77,21 @@ export function PropertyModal({ property, onClose, onSaved }) {
 
   return (
     <Modal title={isEdit ? `Edit: ${property.name}` : 'Add Property'} onClose={onClose} footer={<>
-      <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-      <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Property'}</button>
+      {isEdit && onDelete && !confirmDelete && (
+        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--status-overdue)', marginRight: 'auto' }} onClick={() => setConfirmDelete(true)}>🗑 Delete</button>
+      )}
+      {confirmDelete ? (
+        <>
+          <span style={{ fontSize: '12px', color: 'var(--status-overdue)', marginRight: 'auto' }}>Delete "{property.name}" and all its data?</span>
+          <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>No, keep it</button>
+          <button className="btn btn-primary" style={{ background: 'var(--status-overdue)', borderColor: 'var(--status-overdue)' }} onClick={onDelete}>Yes, delete</button>
+        </>
+      ) : (
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Property'}</button>
+        </>
+      )}
     </>}>
       {error && <div className="alert alert-error">{error}</div>}
       <FieldRow label="Property name *"><input {...bind('name')} placeholder="Main Home" /></FieldRow>
@@ -643,6 +657,7 @@ export function ComponentModal({ component, assetId, onClose, onSaved }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }

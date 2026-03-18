@@ -1888,7 +1888,7 @@ function LoanModal({ asset, loan, onClose, onDone }) {
   )
 }
 
-export default function PropertyView({ propertyId, properties = [], onSwitchProperty, onAddProperty, jumpToAssetId, onJumpHandled }) {
+export default function PropertyView({ propertyId, properties = [], onSwitchProperty, onAddProperty, jumpToAssetId, onJumpHandled, onReloadProperties }) {
   const [property, setProperty] = useState(null)
   const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(true)
@@ -2095,7 +2095,13 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
           onDelete={async () => {
             await api.deleteProperty(property.id)
             setEditProperty(false)
-            if (onSwitchProperty && properties.length > 1) {
+            if (onReloadProperties) {
+              const fresh = await onReloadProperties()
+              if (fresh && fresh.length > 0) {
+                const next = fresh.find(p => p.id !== property.id) || fresh[0]
+                if (onSwitchProperty) onSwitchProperty(next.id)
+              }
+            } else if (onSwitchProperty && properties.length > 1) {
               const next = properties.find(p => p.id !== property.id)
               if (next) onSwitchProperty(next.id)
             }

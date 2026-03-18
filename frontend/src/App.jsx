@@ -321,7 +321,7 @@ export default function App() {
               onAddProperty={() => setAddProperty(true)}
             />
           )}
-          {view === 'property'    && currentPropId && <PropertyView key={currentPropId} propertyId={currentPropId} properties={properties} onSwitchProperty={setCurrentPropId} onAddProperty={() => setAddProperty(true)} jumpToAssetId={jumpToAssetId} onJumpHandled={() => setJumpToAssetId(null)} />}
+          {view === 'property'    && currentPropId && <PropertyView key={currentPropId} propertyId={currentPropId} properties={properties} onSwitchProperty={setCurrentPropId} onAddProperty={() => setAddProperty(true)} jumpToAssetId={jumpToAssetId} onJumpHandled={() => setJumpToAssetId(null)} onReloadProperties={() => api.getProperties().then(p => { setProperties(p); return p })} />}
           {view === 'property'    && !currentPropId && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}>
               <div style={{ fontSize: 48 }}>🏠</div>
