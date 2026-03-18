@@ -30,7 +30,8 @@ export default function TaskDetailModal({ task, onClose, onNavigate, assetName, 
   }, [taskId, assetId])
 
   const isOverdue = task.days_until_due !== null && task.days_until_due < 0
-  const statusColor = isOverdue ? 'var(--status-overdue)' : 'var(--status-soon)'
+  const isDueSoon = task.days_until_due !== null && task.days_until_due >= 0 && task.days_until_due <= 14
+  const statusColor = isOverdue ? 'var(--status-overdue)' : isDueSoon ? 'var(--status-soon)' : 'var(--status-ok)'
   const statusText = isOverdue
     ? `${Math.abs(task.days_until_due)} days overdue`
     : task.days_until_due === null ? 'No due date'
@@ -57,7 +58,7 @@ export default function TaskDetailModal({ task, onClose, onNavigate, assetName, 
         </div>
         {task.days_until_due !== undefined && task.days_until_due !== null && (
           <div style={{ fontSize: '12px', fontWeight: 600, color: statusColor,
-            background: isOverdue ? 'var(--status-overdue-bg)' : 'var(--status-soon-bg)',
+            background: isOverdue ? 'var(--status-overdue-bg)' : isDueSoon ? 'var(--status-soon-bg)' : 'var(--status-ok-bg)',
             padding: '4px 10px', borderRadius: '12px', border: `1px solid ${statusColor}` }}>
             {statusText}
           </div>
