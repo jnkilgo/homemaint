@@ -138,17 +138,35 @@ def update_log(log_id: int, payload: schemas.LogUpdate, db: Session = Depends(ge
         setattr(log, k, v)
     db.commit()
     db.refresh(log)
+    # Recalculate task's last_completed_at from most recent log
+    task = db.query(models.Task).filter(models.Task.id == log.task_id).first()
+    if task:
+        latest = (db.query(models.CompletionLog)
+                  .filter(models.CompletionLog.task_id == task.id)
+                  .order_by(models.CompletionLog.completed_at.desc())
+                  .first())
+        task.last_completed_at = latest.completed_at if latest else None
+        db.commit()
     return _enrich_log(log)
 
 
 @router.delete("/{log_id}")
 def delete_log(log_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    """Admins only — completion logs are immutable for members."""
     log = db.query(models.CompletionLog).filter(models.CompletionLog.id == log_id).first()
     if not log:
         raise HTTPException(404, "Log not found")
+    task_id = log.task_id
     db.delete(log)
     db.commit()
+    # Recalculate task's last_completed_at from most recent remaining log
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if task:
+        latest = (db.query(models.CompletionLog)
+                  .filter(models.CompletionLog.task_id == task_id)
+                  .order_by(models.CompletionLog.completed_at.desc())
+                  .first())
+        task.last_completed_at = latest.completed_at if latest else None
+        db.commit()
     return {"ok": True}
 
 
