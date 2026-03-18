@@ -105,12 +105,14 @@ class Asset(Base):
     usage_reminder_days     = Column(Integer, nullable=True)
     usage_reminder_sent_at  = Column(DateTime, nullable=True)
     icon                    = Column(String, nullable=True)
+    is_loanable             = Column(Boolean, default=False, nullable=False)
     model_year              = Column(Integer, nullable=True)
     custom_fields           = Column(Text, nullable=True)
     purchase_date           = Column(Date, nullable=True)
     created_at              = Column(DateTime, server_default=func.now())
 
     property          = relationship("Property", back_populates="assets")
+    loans             = relationship("AssetLoan", back_populates="asset", cascade="all, delete-orphan")
     tasks             = relationship("Task", back_populates="asset", cascade="all, delete-orphan")
     notes             = relationship("AssetNote", back_populates="asset", cascade="all, delete-orphan")
     spare_inventory   = relationship("SpareInventory", back_populates="asset", cascade="all, delete-orphan")
@@ -322,3 +324,17 @@ class AppSetting(Base):
 
     key   = Column(String, primary_key=True)
     value = Column(Text, nullable=True)
+
+class AssetLoan(Base):
+    __tablename__ = "asset_loans"
+
+    id                   = Column(Integer, primary_key=True, index=True)
+    asset_id             = Column(Integer, ForeignKey("assets.id"), nullable=False)
+    loaned_to            = Column(String, nullable=False)
+    loan_date            = Column(Date, nullable=False)
+    expected_return_date = Column(Date, nullable=True)
+    returned_date        = Column(Date, nullable=True)
+    notes                = Column(Text, nullable=True)
+    created_at           = Column(DateTime, server_default=func.now())
+
+    asset = relationship("Asset", back_populates="loans")

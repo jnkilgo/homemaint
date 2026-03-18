@@ -14,6 +14,7 @@ from app.database import engine, Base
 from app.routers import components, task_parts, ai
 from app.routers import backup as backup_router
 from app.routers import (
+    asset_loans,
     auth, properties, assets, tasks, parts,
     completion_logs, spare_inventory, paint_records,
     contractors, notes, users, settings, imports
@@ -102,6 +103,7 @@ app.include_router(settings.router,        prefix="/api/settings",    tags=["Set
 app.include_router(ai.router,              prefix="/api/ai",          tags=["AI"])
 app.include_router(imports.router,         prefix="/api/import",      tags=["Import"])
 app.include_router(components.router,      prefix="/api/components",  tags=["Components"])
+app.include_router(asset_loans.router,     prefix="/api/asset-loans", tags=["Asset Loans"])
 app.include_router(task_parts.router,      prefix="/api/task-parts",  tags=["Task Parts"])
 app.include_router(backup_router.router, prefix="/api/backup", tags=["backup"])
 

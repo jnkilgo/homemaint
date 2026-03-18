@@ -320,6 +320,7 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
     current_miles:          asset?.current_miles || '',
     usage_reminder_days:    asset?.usage_reminder_days || '',
     icon:                   asset?.icon || '🔧',
+    is_loanable:            asset?.is_loanable || false,
   })
   const [customFields, setCustomFields] = useState(asset?.custom_fields || {})
   const [loading, setLoading] = useState(false)
@@ -433,6 +434,13 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
             <input type="number" {...bind('usage_reminder_days')} placeholder="90" min="1" max="365" />
           </FieldRow>
         )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', borderRadius: 'var(--radius)', background: values.is_loanable ? 'rgba(72,199,142,0.08)' : 'var(--bg-raised)', border: `1px solid ${values.is_loanable ? 'var(--accent)' : 'var(--border)'}`, transition: 'all 0.15s', marginBottom: '16px' }}>
+        <input type="checkbox" id="is_loanable" checked={values.is_loanable} onChange={e => set('is_loanable', e.target.checked)} style={{ width: 'auto', marginTop: '2px', flexShrink: 0 }} />
+        <div>
+          <label htmlFor="is_loanable" style={{ fontWeight: 600, fontSize: '13px', cursor: 'pointer', display: 'block' }}>🤝 Loanable asset</label>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Enable loan tracking for this asset (tools, vehicles, equipment)</div>
+        </div>
       </div>
       <SectionLabel>Custom Fields</SectionLabel>
       <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>Store any specs: oil type, belt size, filter part #, tire size, etc.</div>

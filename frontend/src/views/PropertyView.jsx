@@ -1428,6 +1428,9 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
   const [newNote, setNewNote] = useState('')
   const [logs, setLogs] = useState([])
   const [components, setComponents] = useState([])
+  const [activeLoan, setActiveLoan] = useState(undefined)
+  const [showLoanModal, setShowLoanModal] = useState(false)
+  const [loanRefresh, setLoanRefresh] = useState(0)
   const [editComponent, setEditComponent] = useState(null)
   const [addComponent, setAddComponent] = useState(false)
 
@@ -1440,6 +1443,13 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
   useEffect(() => {
     if (open) loadTasks()
   }, [open, taskRefresh, taskRefreshKey])
+
+  useEffect(() => {
+    api.getAssetLoans(asset.id).then(loans => {
+      const active = loans.find(l => !l.returned_date)
+      setActiveLoan(active || null)
+    }).catch(() => { setActiveLoan(null) })
+  }, [asset.id, loanRefresh])
 
   async function loadTab(tab) {
     setActiveTab(tab)
@@ -1490,9 +1500,24 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          {asset.is_loanable && activeLoan && !activeLoan.returned_date && (
+            <span
+              className="badge badge-due_soon"
+              style={{ cursor: 'pointer', background: 'var(--bg-raised)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              onClick={e => { e.stopPropagation(); setShowLoanModal(true) }}
+              title={`Loaned to ${activeLoan.loaned_to}`}
+            >🤝 {activeLoan.loaned_to}</span>
+          )}
           {overdueCount > 0 && <span className="badge badge-overdue">{overdueCount} overdue</span>}
           <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{asset.task_count} tasks</span>
           <span style={{ color: 'var(--text-muted)', fontSize: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>⌄</span>
+          {asset.is_loanable && activeLoan === null && (
+            <span
+              onClick={e => { e.stopPropagation(); setShowLoanModal(true) }}
+              style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
+              title="Loan out"
+            >🤝</span>
+          )}
           <span
             onClick={e => { e.stopPropagation(); onEdit(asset) }}
             style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
@@ -1753,7 +1778,113 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
           }}
         />
       )}
+      {showLoanModal && (
+        <LoanModal
+          asset={asset}
+          loan={activeLoan && !activeLoan.returned_date ? activeLoan : null}
+          onClose={() => setShowLoanModal(false)}
+          onDone={() => {
+            setShowLoanModal(false)
+            setLoanRefresh(r => r + 1)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+
+function LoanModal({ asset, loan, onClose, onDone }) {
+  const today = new Date().toISOString().split('T')[0]
+  const isActive = loan && !loan.returned_date
+  const [values, setValues] = useState({
+    loaned_to: loan?.loaned_to || '',
+    loan_date: loan?.loan_date || today,
+    expected_return_date: loan?.expected_return_date || '',
+    notes: loan?.notes || '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit() {
+    if (!values.loaned_to.trim()) { setError('Name is required'); return }
+    setLoading(true); setError('')
+    try {
+      await api.createLoan({
+        asset_id: asset.id,
+        loaned_to: values.loaned_to,
+        loan_date: values.loan_date,
+        expected_return_date: values.expected_return_date || null,
+        notes: values.notes || null,
+      })
+      onDone()
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
+  }
+
+  async function markReturned() {
+    setLoading(true); setError('')
+    try {
+      await api.returnLoan(loan.id, { returned_date: today })
+      onDone()
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
+  }
+
+  const title = isActive ? `🤝 On Loan — ${asset.name}` : `Loan Out — ${asset.name}`
+
+  return (
+    <Modal title={title} onClose={onClose} footer={
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', width: '100%' }}>
+        {isActive && (
+          <button className="btn btn-primary" onClick={markReturned} disabled={loading}>
+            ✓ Mark Returned
+          </button>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          {!isActive && (
+            <button className="btn btn-primary" onClick={submit} disabled={loading}>
+              {loading ? 'Saving...' : 'Loan Out'}
+            </button>
+          )}
+        </div>
+      </div>
+    }>
+      {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+      {isActive && (
+        <div style={{ padding: '12px 14px', background: 'var(--bg-raised)', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 13 }}>
+          <div><strong>Loaned to:</strong> {loan.loaned_to}</div>
+          <div><strong>Since:</strong> {loan.loan_date}</div>
+          {loan.expected_return_date && <div><strong>Expected back:</strong> {loan.expected_return_date}</div>}
+          {loan.notes && <div><strong>Notes:</strong> {loan.notes}</div>}
+        </div>
+      )}
+      {!isActive && <>
+        <div className="form-group" style={{ marginBottom: 14 }}>
+          <label className="form-label">Loaned to *</label>
+          <input className="form-input" placeholder="Name or contact" value={values.loaned_to}
+            onChange={e => setValues(v => ({ ...v, loaned_to: e.target.value }))} />
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label className="form-label">Loan date</label>
+            <input type="date" className="form-input" value={values.loan_date}
+              onChange={e => setValues(v => ({ ...v, loan_date: e.target.value }))} />
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label className="form-label">Expected return</label>
+            <input type="date" className="form-input" value={values.expected_return_date}
+              onChange={e => setValues(v => ({ ...v, expected_return_date: e.target.value }))} />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Notes</label>
+          <input className="form-input" placeholder="Condition, contact info..." value={values.notes}
+            onChange={e => setValues(v => ({ ...v, notes: e.target.value }))} />
+        </div>
+      </>}
+    </Modal>
   )
 }
 

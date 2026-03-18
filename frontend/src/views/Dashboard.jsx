@@ -9,9 +9,11 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
   const [loading, setLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState(null)
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [loans, setLoans] = useState([])
 
   useEffect(() => {
     api.getDashboard().then(setData).finally(() => setLoading(false))
+    api.getLoans(true).then(setLoans).catch(() => {})
   }, [])
 
   if (loading) return <LoadingSpinner />
@@ -185,6 +187,36 @@ export default function Dashboard({ onNavigate, hasNoProperties, onStartOnboardi
           </div>
         )}
       </div>
+
+      {loans.length > 0 && (
+        <div className="card" style={{ marginTop: 20 }}>
+          <div className="card-header">
+            <span className="card-title">🤝 Loaned Out</span>
+            <span className="badge badge-due_soon">{loans.length}</span>
+          </div>
+          <table className="data-table">
+            <thead><tr>
+              <th>Asset</th><th>Loaned To</th><th>Property</th><th>Expected Back</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+              {loans.map(l => (
+                <tr key={l.id}>
+                  <td style={{ fontWeight: 500 }}>{l.asset_name}</td>
+                  <td>{l.loaned_to}</td>
+                  <td className="text-muted">{l.property_name}</td>
+                  <td className="mono">{l.expected_return_date ? formatDate(l.expected_return_date) : '—'}</td>
+                  <td>
+                    {l.status === 'overdue' && <span className="badge badge-overdue">Overdue</span>}
+                    {l.status === 'due_soon' && <span className="badge badge-due_soon">Due Soon</span>}
+                    {l.status === 'ok' && <span className="badge badge-ok">OK</span>}
+                    {!l.status && <span className="text-muted" style={{ fontSize: 12 }}>No return date</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selectedTask && (
         <TaskDetailModal

@@ -128,6 +128,7 @@ class AssetCreate(BaseModel):
     current_hours: Optional[float] = None
     current_miles: Optional[float] = None
     icon: Optional[str] = None
+    is_loanable: Optional[bool] = False
     custom_fields: Optional[str] = None
     usage_reminder_days: Optional[int] = None
 
@@ -156,6 +157,7 @@ class AssetOut(BaseModel):
     current_hours: Optional[float]
     current_miles: Optional[float]
     icon: Optional[str]
+    is_loanable: bool = False
     created_at: datetime
     task_count: Optional[int] = 0
     overdue_count: Optional[int] = 0
@@ -488,3 +490,28 @@ class TaskPartOut(BaseModel):
     part_number: Optional[str] = None
     part_qty: Optional[int] = 1
     part_spec_notes: Optional[str] = None
+
+class AssetLoanCreate(BaseModel):
+    asset_id: int
+    loaned_to: str
+    loan_date: date
+    expected_return_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class AssetLoanReturn(BaseModel):
+    returned_date: date
+
+class AssetLoanOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    asset_id: int
+    loaned_to: str
+    loan_date: date
+    expected_return_date: Optional[date]
+    returned_date: Optional[date]
+    notes: Optional[str]
+    created_at: datetime
+    asset_name: Optional[str] = None
+    property_name: Optional[str] = None
+    days_until_due: Optional[int] = None
+    status: Optional[str] = None
