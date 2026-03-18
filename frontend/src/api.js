@@ -117,13 +117,6 @@ export const api = {
   },
   logCompletion: (data) => req('POST', '/logs/', data),
   createLog: (data) => req('POST', `/logs/`, data),
-
-  // Asset loans
-  getLoans: (activeOnly = false) => req('GET', `/asset-loans/?active_only=${activeOnly}`),
-  getAssetLoans: (assetId) => req('GET', `/asset-loans/asset/${assetId}`),
-  createLoan: (data) => req('POST', '/asset-loans/', data),
-  returnLoan: (id, data) => req('PATCH', `/asset-loans/${id}/return`, data),
-  deleteLoan: (id) => req('DELETE', `/asset-loans/${id}`),
   deleteLog: (id) => req('DELETE', `/logs/${id}`),
   updateLog: (id, data) => req('PATCH', `/logs/${id}`, data),
   getAnnualSummary: (params = {}) => {
@@ -182,7 +175,6 @@ export const api = {
 
   // Users
   getUsers: () => req('GET', '/users/'),
-  getUserStats: () => req('GET', '/users/stats'),
   createUser: (data) => req('POST', '/users/', data),
   updateUser: (id, data) => req('PUT', `/users/${id}`, data),
   deleteUser: (id) => req('DELETE', `/users/${id}`),

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import TaskDetailModal from '../components/TaskDetailModal'
 import { api } from '../api'
 import { StatusBadge, DueLabel, Modal, ConfirmModal, LoadingSpinner, formatDate, intervalLabel, useForm } from '../components/shared'
 import { AssetModal, TaskModal, DeleteAssetModal, DeleteTaskModal, PropertyModal } from '../components/ManageModals'
@@ -562,7 +561,7 @@ function SparesTab({ asset }) {
 
 const UNGROUPED = '__ungrouped__'
 
-function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAdd, onReordered, statusFilter, onPreview, asset }) {
+function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAdd, onReordered, statusFilter }) {
   const [tasks, setTasks] = useState(() => [...initialTasks].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
   const [collapsedGroups, setCollapsedGroups] = useState({})
   const [editingGroup, setEditingGroup] = useState(null)
@@ -817,7 +816,7 @@ function TasksTab({ tasks: initialTasks, onLog, onEdit, onDelete, onSnooze, onAd
                       <td>
                         <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                           {task.is_critical && <span title="Critical alert" style={{ fontSize: '10px' }}>🔴</span>}
-                          <span onClick={() => onPreview && onPreview({ task, asset })} style={{ cursor: 'pointer', textDecoration: 'underline dotted', textDecorationColor: 'var(--text-muted)' }} title="Preview task">{task.name}</span>
+                          {task.name}
                           {task.task_parts && task.task_parts.length > 0 && (
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1px 6px' }}
                               title={task.task_parts.map(tp => tp.part_name).join(', ')}>
@@ -1414,7 +1413,7 @@ function AssetContractorsTab({ asset }) {
   )
 }
 
-function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onToggle, onSnoozeDone, taskRefreshKey, statusFilter, onPreview }) {
+function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onToggle, onSnoozeDone, taskRefreshKey, statusFilter }) {
   const open = isOpen ?? false
   const [tasks, setTasks] = useState([])
   const [tasksLoaded, setTasksLoaded] = useState(false)
@@ -1428,9 +1427,6 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
   const [newNote, setNewNote] = useState('')
   const [logs, setLogs] = useState([])
   const [components, setComponents] = useState([])
-  const [activeLoan, setActiveLoan] = useState(undefined)
-  const [showLoanModal, setShowLoanModal] = useState(false)
-  const [loanRefresh, setLoanRefresh] = useState(0)
   const [editComponent, setEditComponent] = useState(null)
   const [addComponent, setAddComponent] = useState(false)
 
@@ -1443,13 +1439,6 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
   useEffect(() => {
     if (open) loadTasks()
   }, [open, taskRefresh, taskRefreshKey])
-
-  useEffect(() => {
-    api.getAssetLoans(asset.id).then(loans => {
-      const active = loans.find(l => !l.returned_date)
-      setActiveLoan(active || null)
-    }).catch(() => { setActiveLoan(null) })
-  }, [asset.id, loanRefresh])
 
   async function loadTab(tab) {
     setActiveTab(tab)
@@ -1500,24 +1489,9 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-          {asset.is_loanable && activeLoan && !activeLoan.returned_date && (
-            <span
-              className="badge badge-due_soon"
-              style={{ cursor: 'pointer', background: 'var(--bg-raised)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              onClick={e => { e.stopPropagation(); setShowLoanModal(true) }}
-              title={`Loaned to ${activeLoan.loaned_to}`}
-            >🤝 {activeLoan.loaned_to}</span>
-          )}
           {overdueCount > 0 && <span className="badge badge-overdue">{overdueCount} overdue</span>}
           <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{asset.task_count} tasks</span>
           <span style={{ color: 'var(--text-muted)', fontSize: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>⌄</span>
-          {asset.is_loanable && activeLoan === null && (
-            <span
-              onClick={e => { e.stopPropagation(); setShowLoanModal(true) }}
-              style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
-              title="Loan out"
-            >🤝</span>
-          )}
           <span
             onClick={e => { e.stopPropagation(); onEdit(asset) }}
             style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
@@ -1564,8 +1538,6 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
               onAdd={() => setAddTask(true)}
               onReordered={loadTasks}
               statusFilter={statusFilter}
-              onPreview={onPreview}
-              asset={asset}
             />
           )}
 
@@ -1778,123 +1750,16 @@ function AssetRow({ asset, onLogDone, onEdit, onDelete, onSnooze, isOpen, onTogg
           }}
         />
       )}
-      {showLoanModal && (
-        <LoanModal
-          asset={asset}
-          loan={activeLoan && !activeLoan.returned_date ? activeLoan : null}
-          onClose={() => setShowLoanModal(false)}
-          onDone={() => {
-            setShowLoanModal(false)
-            setLoanRefresh(r => r + 1)
-          }}
-        />
-      )}
     </div>
   )
 }
 
-
-function LoanModal({ asset, loan, onClose, onDone }) {
-  const today = new Date().toISOString().split('T')[0]
-  const isActive = loan && !loan.returned_date
-  const [values, setValues] = useState({
-    loaned_to: loan?.loaned_to || '',
-    loan_date: loan?.loan_date || today,
-    expected_return_date: loan?.expected_return_date || '',
-    notes: loan?.notes || '',
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function submit() {
-    if (!values.loaned_to.trim()) { setError('Name is required'); return }
-    setLoading(true); setError('')
-    try {
-      await api.createLoan({
-        asset_id: asset.id,
-        loaned_to: values.loaned_to,
-        loan_date: values.loan_date,
-        expected_return_date: values.expected_return_date || null,
-        notes: values.notes || null,
-      })
-      onDone()
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
-  }
-
-  async function markReturned() {
-    setLoading(true); setError('')
-    try {
-      await api.returnLoan(loan.id, { returned_date: today })
-      onDone()
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
-  }
-
-  const title = isActive ? `🤝 On Loan — ${asset.name}` : `Loan Out — ${asset.name}`
-
-  return (
-    <Modal title={title} onClose={onClose} footer={
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', width: '100%' }}>
-        {isActive && (
-          <button className="btn btn-primary" onClick={markReturned} disabled={loading}>
-            ✓ Mark Returned
-          </button>
-        )}
-        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          {!isActive && (
-            <button className="btn btn-primary" onClick={submit} disabled={loading}>
-              {loading ? 'Saving...' : 'Loan Out'}
-            </button>
-          )}
-        </div>
-      </div>
-    }>
-      {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
-      {isActive && (
-        <div style={{ padding: '12px 14px', background: 'var(--bg-raised)', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 13 }}>
-          <div><strong>Loaned to:</strong> {loan.loaned_to}</div>
-          <div><strong>Since:</strong> {loan.loan_date}</div>
-          {loan.expected_return_date && <div><strong>Expected back:</strong> {loan.expected_return_date}</div>}
-          {loan.notes && <div><strong>Notes:</strong> {loan.notes}</div>}
-        </div>
-      )}
-      {!isActive && <>
-        <div className="form-group" style={{ marginBottom: 14 }}>
-          <label className="form-label">Loaned to *</label>
-          <input className="form-input" placeholder="Name or contact" value={values.loaned_to}
-            onChange={e => setValues(v => ({ ...v, loaned_to: e.target.value }))} />
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">Loan date</label>
-            <input type="date" className="form-input" value={values.loan_date}
-              onChange={e => setValues(v => ({ ...v, loan_date: e.target.value }))} />
-          </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label className="form-label">Expected return</label>
-            <input type="date" className="form-input" value={values.expected_return_date}
-              onChange={e => setValues(v => ({ ...v, expected_return_date: e.target.value }))} />
-          </div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Notes</label>
-          <input className="form-input" placeholder="Condition, contact info..." value={values.notes}
-            onChange={e => setValues(v => ({ ...v, notes: e.target.value }))} />
-        </div>
-      </>}
-    </Modal>
-  )
-}
-
-export default function PropertyView({ propertyId, properties = [], onSwitchProperty, onAddProperty, jumpToAssetId, onJumpHandled, onReloadProperties }) {
+export default function PropertyView({ propertyId, properties = [], onSwitchProperty, onAddProperty, jumpToAssetId, onJumpHandled }) {
   const [property, setProperty] = useState(null)
   const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(true)
   const [refresh, setRefresh] = useState(0)
   const [filter, setFilter] = useState(null) // null | 'overdue' | 'due_soon'
-  const [categoryFilter, setCategoryFilter] = useState(null)
   const [addAsset, setAddAsset] = useState(false)
   const [editAsset, setEditAsset] = useState(null)
   const [deleteAsset, setDeleteAsset] = useState(null)
@@ -1911,7 +1776,6 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   const [editProperty, setEditProperty] = useState(false)
   const [deleteProperty, setDeleteProperty] = useState(false)
   const [snoozeTask, setSnoozeTask] = useState(null)
-  const [previewTask, setPreviewTask] = useState(null)
 
   // Auto-open asset when navigating from dashboard
   useEffect(() => {
@@ -1928,7 +1792,6 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   useEffect(() => {
     setLoading(true)
     setFilter(null)
-    setCategoryFilter(null)
     Promise.all([
       api.getProperties().then(ps => ps.find(p => p.id === propertyId)),
       api.getAssets(propertyId)
@@ -1941,14 +1804,13 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
   if (loading) return <LoadingSpinner />
 
   // Filter assets: only show assets that have at least one task matching filter
-  const categories = [...new Set(assets.map(a => a.category).filter(Boolean))].sort()
-
-  const filteredAssets = assets.filter(a => {
-    if (filter === 'overdue' && !(a.overdue_count || 0)) return false
-    if (filter === 'due_soon' && !(a.due_soon_count || 0)) return false
-    if (categoryFilter && a.category !== categoryFilter) return false
-    return true
-  })
+  const filteredAssets = filter
+    ? assets.filter(a => {
+        if (filter === 'overdue')  return (a.overdue_count || 0) > 0
+        if (filter === 'due_soon') return (a.due_soon_count || 0) > 0
+        return true
+      })
+    : assets
 
   function toggleFilter(f) {
     setFilter(prev => prev === f ? null : f)
@@ -1985,7 +1847,6 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
             <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
               {[property.address_line1, property.city, property.state].filter(Boolean).join(', ')}
             </div>
-
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => setEditProperty(true)} title="Edit property">✎ Edit</button>
@@ -2023,28 +1884,6 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
         </div>
       )}
 
-      {categories.length > 1 && (
-        <div style={{
-          display: 'flex', gap: '6px', alignItems: 'center',
-          overflowX: 'auto', paddingBottom: '4px', marginBottom: '12px',
-          WebkitOverflowScrolling: 'touch',
-        }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>Category:</span>
-          <button
-            className={`btn btn-sm ${!categoryFilter ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ flexShrink: 0 }}
-            onClick={() => setCategoryFilter(null)}>All</button>
-          {categories.map(c => (
-            <button key={c}
-              className={`btn btn-sm ${categoryFilter === c ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-              onClick={() => setCategoryFilter(prev => prev === c ? null : c)}>
-              {c}
-            </button>
-          ))}
-        </div>
-      )}
-
       {filter && (
         <div style={{
           fontSize: '12px', color: 'var(--text-muted)',
@@ -2076,7 +1915,6 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
               onSnooze={t => setSnoozeTask({ task: t, assetId: asset.id })}
               taskRefreshKey={assetTaskRefresh[asset.id] || 0}
               statusFilter={filter}
-              onPreview={({ task, asset }) => setPreviewTask({ task, asset })}
             />
             </div>
           ))
@@ -2095,13 +1933,7 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
           onDelete={async () => {
             await api.deleteProperty(property.id)
             setEditProperty(false)
-            if (onReloadProperties) {
-              const fresh = await onReloadProperties()
-              if (fresh && fresh.length > 0) {
-                const next = fresh.find(p => p.id !== property.id) || fresh[0]
-                if (onSwitchProperty) onSwitchProperty(next.id)
-              }
-            } else if (onSwitchProperty && properties.length > 1) {
+            if (onSwitchProperty && properties.length > 1) {
               const next = properties.find(p => p.id !== property.id)
               if (next) onSwitchProperty(next.id)
             }
@@ -2141,14 +1973,6 @@ export default function PropertyView({ propertyId, properties = [], onSwitchProp
             setSnoozeTask(null)
             setAssetTaskRefresh(prev => ({ ...prev, [snoozeTask.assetId]: (prev[snoozeTask.assetId] || 0) + 1 }))
           }}
-        />
-      )}
-      {previewTask && (
-        <TaskDetailModal
-          task={previewTask.task}
-          assetName={previewTask.asset?.name}
-          propertyName={property?.name}
-          onClose={() => setPreviewTask(null)}
         />
       )}
     </div>

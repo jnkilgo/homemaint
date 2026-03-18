@@ -45,7 +45,7 @@ function SectionLabel({ children }) {
   )
 }
 
-export function PropertyModal({ property, onClose, onSaved, onDelete }) {
+export function PropertyModal({ property, onClose, onSaved }) {
   const isEdit = !!property
   const { values, set, bind } = useForm({
     name:          property?.name || '',
@@ -61,7 +61,6 @@ export function PropertyModal({ property, onClose, onSaved, onDelete }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }
@@ -77,21 +76,8 @@ export function PropertyModal({ property, onClose, onSaved, onDelete }) {
 
   return (
     <Modal title={isEdit ? `Edit: ${property.name}` : 'Add Property'} onClose={onClose} footer={<>
-      {isEdit && onDelete && !confirmDelete && (
-        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--status-overdue)', marginRight: 'auto' }} onClick={() => setConfirmDelete(true)}>🗑 Delete</button>
-      )}
-      {confirmDelete ? (
-        <>
-          <span style={{ fontSize: '12px', color: 'var(--status-overdue)', marginRight: 'auto' }}>Delete "{property.name}" and all its data?</span>
-          <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>No, keep it</button>
-          <button className="btn btn-primary" style={{ background: 'var(--status-overdue)', borderColor: 'var(--status-overdue)' }} onClick={onDelete}>Yes, delete</button>
-        </>
-      ) : (
-        <>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Property'}</button>
-        </>
-      )}
+      <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+      <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Property'}</button>
     </>}>
       {error && <div className="alert alert-error">{error}</div>}
       <FieldRow label="Property name *"><input {...bind('name')} placeholder="Main Home" /></FieldRow>
@@ -334,7 +320,6 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
     current_miles:          asset?.current_miles || '',
     usage_reminder_days:    asset?.usage_reminder_days || '',
     icon:                   asset?.icon || '🔧',
-    is_loanable:            asset?.is_loanable || false,
   })
   const [customFields, setCustomFields] = useState(asset?.custom_fields || {})
   const [loading, setLoading] = useState(false)
@@ -449,13 +434,6 @@ export function AssetModal({ asset, propertyId, onClose, onSaved }) {
           </FieldRow>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', borderRadius: 'var(--radius)', background: values.is_loanable ? 'rgba(72,199,142,0.08)' : 'var(--bg-raised)', border: `1px solid ${values.is_loanable ? 'var(--accent)' : 'var(--border)'}`, transition: 'all 0.15s', marginBottom: '16px' }}>
-        <input type="checkbox" id="is_loanable" checked={values.is_loanable} onChange={e => set('is_loanable', e.target.checked)} style={{ width: 'auto', marginTop: '2px', flexShrink: 0 }} />
-        <div>
-          <label htmlFor="is_loanable" style={{ fontWeight: 600, fontSize: '13px', cursor: 'pointer', display: 'block' }}>🤝 Loanable asset</label>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Enable loan tracking for this asset (tools, vehicles, equipment)</div>
-        </div>
-      </div>
       <SectionLabel>Custom Fields</SectionLabel>
       <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>Store any specs: oil type, belt size, filter part #, tire size, etc.</div>
       <CustomFieldsEditor value={customFields} onChange={setCustomFields} />
@@ -482,7 +460,6 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
     season:              task?.season || 'spring',
     advance_warning_days:task?.advance_warning_days ?? 14,
     is_critical:         task?.is_critical || false,
-    tools:               task?.tools || '',
   })
   const [assetParts, setAssetParts] = useState([])   // all parts on this asset
   const [linkedIds, setLinkedIds] = useState(new Set()) // task_part ids currently linked
@@ -522,7 +499,6 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
         season: values.interval_type === 'seasonal' ? values.season : null,
         advance_warning_days: parseInt(values.advance_warning_days),
         is_critical: values.is_critical,
-        tools: values.tools || null,
       }
       const result = isEdit ? await api.updateTask(task.id, data) : await api.createTask(data)
       const taskId = result.id
@@ -574,12 +550,6 @@ export function TaskModal({ task, assetId, onClose, onSaved }) {
           <label htmlFor="is_critical" style={{ fontWeight: 600, fontSize: '13px', cursor: 'pointer', display: 'block' }}>🔴 Critical alert</label>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Send urgent push notification when overdue. Use for safety-critical items only.</div>
         </div>
-      </div>
-
-      <SectionLabel>Tools Required</SectionLabel>
-      <div className="form-group" style={{ marginBottom: '16px' }}>
-        <input className="form-input" placeholder="e.g. Socket wrench, oil drain pan, funnel" {...bind('tools')} />
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Optional — comma separated list of tools needed</div>
       </div>
 
       <SectionLabel>Required Parts</SectionLabel>
@@ -657,7 +627,6 @@ export function ComponentModal({ component, assetId, onClose, onSaved }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function submit() {
     if (!values.name.trim()) { setError('Name is required'); return }

@@ -201,7 +201,7 @@ function ImportAssets({ properties: propsProp = [] }) {
       })
     }
   }, [])
-  const [status, setStatus] = useState(null)
+  const [status, setStatus] = useState(null) // null | 'loading' | 'success' | 'error'
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
@@ -343,6 +343,7 @@ function AISettings() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* Enable toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: settings.ai_enabled ? 'var(--accent-soft)' : 'var(--bg-raised)', borderRadius: 'var(--radius)', border: `1px solid ${settings.ai_enabled ? 'var(--accent)' : 'var(--border)'}`, transition: 'all 0.15s' }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: '13px' }}>AI Assistant</div>
@@ -352,6 +353,7 @@ function AISettings() {
       </div>
 
       {settings.ai_enabled && (<>
+        {/* Provider */}
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Provider</label>
@@ -372,6 +374,7 @@ function AISettings() {
           </div>
         </div>
 
+        {/* API Keys */}
         {settings.ai_provider === 'anthropic' && (
           <div className="form-group">
             <label className="form-label">Anthropic API Key</label>
@@ -465,7 +468,7 @@ function UsageReminderSettings() {
 function BackupRestore() {
   const [restoring, setRestoring] = useState(false)
   const [restoreFile, setRestoreFile] = useState(null)
-  const [status, setStatus] = useState(null)
+  const [status, setStatus] = useState(null) // null | 'success' | 'error'
   const [message, setMessage] = useState('')
 
   async function handleRestore() {
@@ -497,6 +500,7 @@ function BackupRestore() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Backup */}
       <div>
         <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>Download Backup</div>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.6 }}>
@@ -529,6 +533,7 @@ function BackupRestore() {
 
       <div style={{ borderTop: '1px solid var(--border)' }} />
 
+      {/* Restore */}
       <div>
         <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>Restore from Backup</div>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.6 }}>
@@ -585,124 +590,8 @@ function BackupRestore() {
   )
 }
 
-// --- User Stats Table ---
-
-function OnlineBadge({ status }) {
-  const config = {
-    online:  { color: '#22c55e', label: '● Online' },
-    recent:  { color: '#f59e0b', label: '● Recent' },
-    offline: { color: 'var(--text-muted)', label: '○ Offline' },
-  }[status] || { color: 'var(--text-muted)', label: '—' }
-
-  return (
-    <span style={{ fontSize: '11px', color: config.color, fontWeight: 600, whiteSpace: 'nowrap' }}>
-      {config.label}
-    </span>
-  )
-}
-
-function UserStatsTable({ stats, currentUser, onEdit, onDelete }) {
-  const [sortKey, setSortKey] = useState('last_seen_at')
-  const [sortDir, setSortDir] = useState('desc')
-
-  function toggleSort(key) {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortKey(key); setSortDir('desc') }
-  }
-
-  const sorted = [...(stats || [])].sort((a, b) => {
-    let av = a[sortKey], bv = b[sortKey]
-    if (av == null) av = sortDir === 'asc' ? '\uffff' : ''
-    if (bv == null) bv = sortDir === 'asc' ? '\uffff' : ''
-    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
-    return sortDir === 'asc' ? av - bv : bv - av
-  })
-
-  function SortTh({ label, k }) {
-    const active = sortKey === k
-    return (
-      <th
-        onClick={() => toggleSort(k)}
-        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
-      >
-        {label}{active ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-      </th>
-    )
-  }
-
-  function fmtAgo(dt) {
-    if (!dt) return '—'
-    const diff = (Date.now() - new Date(dt)) / 1000
-    if (diff < 60) return 'just now'
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-    return formatDate(dt)
-  }
-
-  if (!stats || stats.length === 0) {
-    return <div style={{ padding: '16px', color: 'var(--text-muted)', fontSize: '13px' }}>No users found.</div>
-  }
-
-  return (
-    <div className="table-scroll">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <SortTh label="Name" k="display_name" />
-            <SortTh label="Status" k="online_status" />
-            <SortTh label="Last Seen" k="last_seen_at" />
-            <SortTh label="Last Login" k="last_login_at" />
-            <SortTh label="Logins" k="login_count" />
-            <SortTh label="Props" k="property_count" />
-            <SortTh label="Assets" k="asset_count" />
-            <SortTh label="Tasks" k="task_count" />
-            <SortTh label="Completions" k="completion_count" />
-            <SortTh label="7d" k="week_logins" />
-            <SortTh label="Joined" k="created_at" />
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map(u => (
-            <tr key={u.id}>
-              <td>
-                <div style={{ fontWeight: 500 }}>{u.display_name}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  @{u.username}
-                  {u.role === 'admin' && <span style={{ marginLeft: '4px', color: 'var(--accent)' }}>admin</span>}
-                </div>
-              </td>
-              <td><OnlineBadge status={u.online_status} /></td>
-              <td className="mono text-muted" style={{ fontSize: '11px' }}>{fmtAgo(u.last_seen_at)}</td>
-              <td className="mono text-muted" style={{ fontSize: '11px' }}>{fmtAgo(u.last_login_at)}</td>
-              <td style={{ textAlign: 'center' }}>{u.login_count}</td>
-              <td style={{ textAlign: 'center' }}>{u.property_count}</td>
-              <td style={{ textAlign: 'center' }}>{u.asset_count}</td>
-              <td style={{ textAlign: 'center' }}>{u.task_count}</td>
-              <td style={{ textAlign: 'center' }}>{u.completion_count}</td>
-              <td style={{ textAlign: 'center' }}>{u.week_logins}</td>
-              <td className="mono text-muted" style={{ fontSize: '11px' }}>{formatDate(u.created_at)}</td>
-              <td>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => onEdit(u)}>Edit</button>
-                  {u.id !== currentUser?.id && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => onDelete(u)}>✕</button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-// --- Main SettingsView ---
-
-export default function SettingsView({ onLogout, properties = [], onStartOnboarding }) {
+export default function SettingsView({ onLogout, properties = [] }) {
   const [users, setUsers] = useState([])
-  const [userStats, setUserStats] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editUser, setEditUser] = useState(null)
@@ -712,13 +601,7 @@ export default function SettingsView({ onLogout, properties = [], onStartOnboard
 
   function load() {
     if (isAdmin) {
-      Promise.all([
-        api.getUsers(),
-        api.getUserStats(),
-      ]).then(([u, s]) => {
-        setUsers(u)
-        setUserStats(s)
-      }).finally(() => setLoading(false))
+      api.getUsers().then(setUsers).finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
@@ -742,21 +625,6 @@ export default function SettingsView({ onLogout, properties = [], onStartOnboard
               <button className="btn btn-ghost" onClick={() => setEditUser(currentUser)}>Change Password</button>
               <button className="btn btn-ghost" onClick={onLogout}>Sign Out</button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-header"><span className="card-title">Setup</span></div>
-        <div className="card-body">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>Property Setup Wizard</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Add a new property with suggested assets based on your profile
-              </div>
-            </div>
-            <button className="btn btn-primary" onClick={onStartOnboarding}>Launch Wizard →</button>
           </div>
         </div>
       </div>
@@ -811,12 +679,29 @@ export default function SettingsView({ onLogout, properties = [], onStartOnboard
             <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>+ Add User</button>
           </div>
           {loading ? <LoadingSpinner /> : (
-            <UserStatsTable
-              stats={userStats}
-              currentUser={currentUser}
-              onEdit={setEditUser}
-              onDelete={setConfirmDelete}
-            />
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Joined</th><th></th></tr></thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id}>
+                      <td style={{ fontWeight: 500 }}>{u.display_name}</td>
+                      <td className="mono text-secondary">@{u.username}</td>
+                      <td><span className={`badge ${u.role === 'admin' ? 'badge-due_soon' : 'badge-unknown'}`}>{u.role}</span></td>
+                      <td className="mono text-muted">{formatDate(u.created_at)}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setEditUser(u)}>Edit</button>
+                          {u.id !== currentUser?.id && (
+                            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(u)}>✕</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
