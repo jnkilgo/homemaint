@@ -130,7 +130,7 @@ def log_completion(payload: schemas.LogCreate, db: Session = Depends(get_db), cu
 
 
 @router.patch("/{log_id}", response_model=schemas.LogOut)
-def update_log(log_id: int, payload: schemas.LogUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def update_log(log_id: int, payload: schemas.LogUpdate, db: Session = Depends(get_db), _=Depends(get_current_user)):
     log = db.query(models.CompletionLog).filter(models.CompletionLog.id == log_id).first()
     if not log:
         raise HTTPException(404, "Log not found")
@@ -142,7 +142,7 @@ def update_log(log_id: int, payload: schemas.LogUpdate, db: Session = Depends(ge
 
 
 @router.delete("/{log_id}")
-def delete_log(log_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def delete_log(log_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     """Admins only — completion logs are immutable for members."""
     log = db.query(models.CompletionLog).filter(models.CompletionLog.id == log_id).first()
     if not log:
