@@ -87,7 +87,7 @@ class Property(Base):
     owner         = relationship("User", back_populates="properties")
     assets        = relationship("Asset", back_populates="property", cascade="all, delete-orphan")
     paint_records = relationship("PaintRecord", back_populates="property", cascade="all, delete-orphan")
-    documents     = relationship("Document", back_populates="property")
+    documents     = relationship("Document", back_populates="property", cascade="all, delete-orphan")
 
 
 class Asset(Base):
@@ -124,7 +124,7 @@ class Asset(Base):
     usage_logs        = relationship("UsageLog", back_populates="asset", cascade="all, delete-orphan")
     asset_contractors = relationship("AssetContractor", back_populates="asset", cascade="all, delete-orphan")
     components        = relationship("Component", back_populates="asset", cascade="all, delete-orphan")
-    documents         = relationship("Document", back_populates="asset")
+    documents         = relationship("Document", back_populates="asset", cascade="all, delete-orphan")
 
 
 class AssetNote(Base):

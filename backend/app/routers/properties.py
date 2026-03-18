@@ -214,6 +214,23 @@ def update_property(property_id: int, payload: schemas.PropertyUpdate, db: Sessi
 @router.delete("/{property_id}")
 def delete_property(property_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
     prop = _get_user_property_or_404(property_id, current, db)
+
+    # Manually cascade through relationships that have cross-FK dependencies
+    for asset in prop.assets:
+        # Null out part_id on spare_inventory before tasks/parts are deleted
+        for spare in asset.spare_inventory:
+            spare.part_id = None
+        db.flush()
+
+        # Delete task parts and parts explicitly
+        for task in asset.tasks:
+            for tp in task.task_parts:
+                db.delete(tp)
+            for part in task.parts:
+                db.delete(part)
+            db.flush()
+
+    db.flush()
     db.delete(prop)
     db.commit()
     return {"ok": True}
