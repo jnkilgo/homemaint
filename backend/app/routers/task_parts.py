@@ -24,7 +24,7 @@ def list_task_parts(task_id: int, db: Session = Depends(get_db), _=Depends(get_c
 
 
 @router.post("/", response_model=schemas.TaskPartOut)
-def link_part(task_id: int, payload: schemas.TaskPartCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
+def link_part(task_id: int, payload: schemas.TaskPartCreate, db: Session = Depends(get_db), _=Depends(get_current_user)):
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
@@ -46,7 +46,7 @@ def link_part(task_id: int, payload: schemas.TaskPartCreate, db: Session = Depen
 
 
 @router.delete("/{tp_id}")
-def unlink_part(tp_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+def unlink_part(tp_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     tp = db.query(models.TaskPart).filter(models.TaskPart.id == tp_id).first()
     if not tp:
         raise HTTPException(404, "Not found")
