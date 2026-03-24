@@ -51,7 +51,7 @@ def update_part_qty(part_id: int, payload: schemas.QtyUpdate, db: Session = Depe
     part = db.query(models.Part).filter(models.Part.id == part_id).first()
     if not part:
         raise HTTPException(404, "Part not found")
-    part.qty = max(0, payload.qty)
+    part.qty_on_hand = max(0, payload.qty)
     db.commit()
     db.refresh(part)
     return _enrich(part)

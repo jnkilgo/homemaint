@@ -107,14 +107,27 @@ export default function TaskDetailModal({ task, onClose, onNavigate, assetName, 
                       {p.last_price && <span>${p.last_price.toFixed(2)}</span>}
                     </div>
                   </div>
-                  <div style={{ fontSize: '11px', flexShrink: 0, fontWeight: 600,
-                    color: p.qty_on_hand > 0 ? 'var(--status-ok)' : 'var(--status-overdue)',
-                    background: p.qty_on_hand > 0 ? 'var(--status-ok-bg)' : 'var(--status-overdue-bg)',
-                    border: `1px solid ${p.qty_on_hand > 0 ? 'var(--status-ok)' : 'var(--status-overdue)'}`,
-                    padding: '2px 8px', borderRadius: '10px' }}>
-                    {p.qty_on_hand} on hand
-                  </div>
-                  {p.qty > 1 && <div style={{ fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>×{p.qty}</div>}
+                  {(() => {
+                    const needed = p.qty || 1
+                    const onHand = p.qty_on_hand || 0
+                    const color = onHand === 0 ? 'var(--status-overdue)'
+                      : onHand < needed ? 'var(--status-overdue)'
+                      : onHand === needed ? 'var(--status-soon)'
+                      : 'var(--status-ok)'
+                    const bg = onHand === 0 ? 'var(--status-overdue-bg)'
+                      : onHand < needed ? 'var(--status-overdue-bg)'
+                      : onHand === needed ? 'var(--status-soon-bg, rgba(251,191,36,0.15))'
+                      : 'var(--status-ok-bg)'
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color, background: bg,
+                          border: `1px solid ${color}`, padding: '2px 8px', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+                          {onHand} on hand
+                        </div>
+                        {needed > 1 && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>×{needed} needed</div>}
+                      </div>
+                    )
+                  })()}
                   {p.reorder_url && (
                     <a href={p.reorder_url} target="_blank" rel="noreferrer"
                       onClick={e => e.stopPropagation()}

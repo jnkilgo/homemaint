@@ -495,7 +495,7 @@ function SparesTab({ asset }) {
 
   async function setQty(partId, newQty) {
     const qty = Math.max(0, parseInt(newQty) || 0)
-    setParts(prev => prev.map(p => p.id === partId ? { ...p, qty } : p))
+    setParts(prev => prev.map(p => p.id === partId ? { ...p, qty_on_hand: qty } : p))
     setSaving(prev => ({ ...prev, [partId]: true }))
     try {
       await api.updatePartQty(partId, qty)
@@ -534,19 +534,19 @@ function SparesTab({ asset }) {
                     <button
                       className="btn btn-ghost btn-sm"
                       style={{ padding: '2px 8px', fontWeight: 700 }}
-                      onClick={() => setQty(p.id, (p.qty || 0) - 1)}
+                      onClick={() => setQty(p.id, (p.qty_on_hand || 0) - 1)}
                     >−</button>
                     <input
                       type="number"
                       min="0"
-                      value={p.qty ?? 0}
+                      value={p.qty_on_hand ?? 0}
                       onChange={e => setQty(p.id, e.target.value)}
-                      style={{ width: '52px', textAlign: 'center', fontFamily: 'var(--font-mono)', opacity: saving[p.id] ? 0.5 : 1, color: (p.qty ?? 0) === 0 ? 'var(--status-overdue)' : undefined, fontWeight: (p.qty ?? 0) === 0 ? 700 : undefined }}
+                      style={{ width: '52px', textAlign: 'center', fontFamily: 'var(--font-mono)', opacity: saving[p.id] ? 0.5 : 1, color: (p.qty_on_hand ?? 0) === 0 ? 'var(--status-overdue)' : undefined, fontWeight: (p.qty_on_hand ?? 0) === 0 ? 700 : undefined }}
                     />
                     <button
                       className="btn btn-ghost btn-sm"
                       style={{ padding: '2px 8px', fontWeight: 700 }}
-                      onClick={() => setQty(p.id, (p.qty || 0) + 1)}
+                      onClick={() => setQty(p.id, (p.qty_on_hand || 0) + 1)}
                     >+</button>
                   </div>
                 </td>

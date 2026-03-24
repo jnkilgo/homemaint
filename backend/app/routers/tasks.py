@@ -43,6 +43,13 @@ def _enrich(task: models.Task, db: Session = None) -> schemas.TaskOut:
     out.usage_until_due = enriched["usage_until_due"]
     out.task_parts = []
     for tp in (task.task_parts or []):
+        # Look up on-hand qty from spare_inventory linked to this part
+        spare_qty = 0
+        if tp.part_id and db:
+            from sqlalchemy import func
+            spare_qty = db.query(func.sum(models.SpareInventory.quantity)).filter(
+                models.SpareInventory.part_id == tp.part_id
+            ).scalar() or 0
         out.task_parts.append(schemas.TaskPartOut(
             id=tp.id,
             task_id=tp.task_id,
@@ -51,7 +58,7 @@ def _enrich(task: models.Task, db: Session = None) -> schemas.TaskOut:
             part_number=tp.part.part_number if tp.part else None,
             part_qty=tp.part.qty if tp.part else 1,
             part_spec_notes=tp.part.spec_notes if tp.part else None,
-            qty_on_hand=tp.part.qty_on_hand if tp.part else 0,
+            qty_on_hand=spare_qty,
         ))
     return out
 

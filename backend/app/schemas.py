@@ -193,6 +193,7 @@ class PartOut(BaseModel):
     reorder_url: Optional[str]
     last_price: Optional[float]
     qty: int = 1
+    qty_on_hand: int = 0
     spec_notes: Optional[str] = None
     task_name: Optional[str] = None
 
