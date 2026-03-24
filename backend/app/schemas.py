@@ -490,6 +490,7 @@ class TaskPartOut(BaseModel):
     part_number: Optional[str] = None
     part_qty: Optional[int] = 1
     part_spec_notes: Optional[str] = None
+    qty_on_hand: Optional[int] = 0
 
 class AssetLoanCreate(BaseModel):
     asset_id: int

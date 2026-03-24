@@ -14,6 +14,7 @@ def _enrich(tp: models.TaskPart) -> schemas.TaskPartOut:
     if tp.part:
         out.part_name = tp.part.name
         out.part_number = tp.part.part_number
+        out.qty_on_hand = tp.part.qty_on_hand or 0
     return out
 
 

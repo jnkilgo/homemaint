@@ -49,8 +49,9 @@ def _enrich(task: models.Task, db: Session = None) -> schemas.TaskOut:
             part_id=tp.part_id,
             part_name=tp.part.name if tp.part else None,
             part_number=tp.part.part_number if tp.part else None,
-            part_qty=tp.part.qty_on_hand if tp.part else 1,
+            part_qty=tp.part.qty if tp.part else 1,
             part_spec_notes=tp.part.spec_notes if tp.part else None,
+            qty_on_hand=tp.part.qty_on_hand if tp.part else 0,
         ))
     return out
 
