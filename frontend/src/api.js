@@ -165,6 +165,7 @@ export const api = {
   getAISettings: () => req('GET', '/ai/settings'),
   updateAISettings: (data) => req('PUT', '/ai/settings', data),
   getAISuggestions: (context) => req('POST', '/ai/suggest', context),
+  lookupPaintColor: (data) => req('POST', '/ai/paint-color', data),
 
   // Components
   getComponents: (assetId) => req('GET', `/components/?asset_id=${assetId}`),

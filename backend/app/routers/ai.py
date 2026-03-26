@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
@@ -198,3 +199,73 @@ def suggest_maintenance(data: dict, db: Session = Depends(get_db), _=Depends(get
             s["interval"] = (s.get("interval") or 1) * 12
         s["interval_type"] = type_map.get(raw, raw if raw in ("days","months","hours","miles","seasonal") else "months")
     return {"suggestions": suggestions}
+
+
+class PaintColorRequest(BaseModel):  # noqa
+    color_name: Optional[str] = None
+    color_code: Optional[str] = None
+    brand: Optional[str] = None
+
+
+@router.post("/paint-color")
+def lookup_paint_color(payload: PaintColorRequest, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    """Use AI to look up the hex color for a paint color name or code."""
+    s = lambda k: get_setting(db, k) or DEFAULTS.get(k, "")
+
+    if s("ai_enabled") != "true":
+        raise HTTPException(400, "AI assistant is not enabled")
+
+    if not payload.color_name and not payload.color_code:
+        raise HTTPException(400, "Provide a color name or code")
+
+    parts = []
+    if payload.brand:
+        parts.append(f"brand: {payload.brand}")
+    if payload.color_code:
+        parts.append(f"color code: {payload.color_code}")
+    if payload.color_name:
+        parts.append(f"color name: {payload.color_name}")
+    color_info = ", ".join(parts)
+
+    prompt = f"""You are a paint color expert. Given a paint color, return ONLY a JSON object with a single key "hex" containing the closest hex color value.
+
+Paint color: {color_info}
+
+Rules:
+- Return ONLY valid JSON like {{"hex": "#a3b5c2"}}
+- No explanation, no markdown, no extra text
+- If you don't know the exact color, return your best approximation
+- The hex must be a valid 6-digit hex color code starting with #"""
+
+    provider = s("ai_provider")
+    model = s("ai_model")
+
+    try:
+        if provider == "openai":
+            key = s("ai_openai_key")
+            if not key:
+                raise HTTPException(400, "OpenAI API key not configured")
+            raw = _call_openai(key, model, prompt)
+        elif provider == "anthropic":
+            key = s("ai_anthropic_key")
+            if not key:
+                raise HTTPException(400, "Anthropic API key not configured")
+            raw = _call_anthropic(key, model, prompt)
+        elif provider == "ollama":
+            raw = _call_ollama(s("ai_ollama_url"), model, prompt)
+        else:
+            raise HTTPException(400, f"Unknown provider: {provider}")
+
+        import json, re
+        # Strip markdown fences if present
+        clean = re.sub(r"```json|```", "", raw).strip()
+        data = json.loads(clean)
+        hex_val = data.get("hex", "")
+        if not re.match(r"^#[0-9a-fA-F]{6}$", hex_val):
+            raise HTTPException(422, f"Invalid hex returned: {hex_val}")
+        return {"hex": hex_val}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"AI color lookup failed: {str(e)}")

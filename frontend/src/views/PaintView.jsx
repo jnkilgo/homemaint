@@ -10,8 +10,25 @@ function PaintForm({ initial, propertyId, onSave, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [contractors, setContractors] = useState([])
+  const [lookingUp, setLookingUp] = useState(false)
 
   useEffect(() => { api.getContractors().then(setContractors) }, [])
+
+  async function lookupColor() {
+    if (!values.color_name && !values.color_code) return
+    setLookingUp(true)
+    try {
+      const result = await api.lookupPaintColor({
+        color_name: values.color_name || null,
+        color_code: values.color_code || null,
+      })
+      if (result.hex) set('color_hex', result.hex)
+    } catch (e) {
+      // silently fail — user can still pick manually
+    } finally {
+      setLookingUp(false)
+    }
+  }
 
   async function submit() {
     setLoading(true); setError('')
@@ -63,6 +80,17 @@ function PaintForm({ initial, propertyId, onSave, onClose }) {
           <label className="form-label">Color Code</label>
           <input placeholder="SW 7036" {...bind('color_code')} />
         </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-8px', marginBottom: '8px' }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={lookupColor}
+          disabled={lookingUp || (!values.color_name && !values.color_code)}
+          style={{ fontSize: '11px' }}
+        >
+          {lookingUp ? '🔍 Looking up…' : '🔍 AI color lookup'}
+        </button>
       </div>
 
       {/* Color picker */}
