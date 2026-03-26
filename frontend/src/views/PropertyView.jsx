@@ -8,7 +8,7 @@ function LogModal({ task, asset, onClose, onDone }) {
   const [contractors, setContractors] = useState([])
   const [latestUsage, setLatestUsage] = useState(null)
   const today = new Date().toISOString().split('T')[0]
-  const { values, bind } = useForm({ note: '', cost: '', contractor_id: '', spare_used_id: '', usage_value: '', completed_at: today })
+  const { values, bind } = useForm({ note: '', cost: '', contractor_id: '', spare_used_id: '', usage_value: '', hours_value: '', miles_value: '', completed_at: today })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -35,6 +35,8 @@ function LogModal({ task, asset, onClose, onDone }) {
         contractor_id: values.contractor_id ? parseInt(values.contractor_id) : null,
         spare_used_id: values.spare_used_id ? parseInt(values.spare_used_id) : null,
         usage_value: values.usage_value ? parseFloat(values.usage_value) : null,
+        hours_value: values.hours_value ? parseFloat(values.hours_value) : null,
+        miles_value: values.miles_value ? parseFloat(values.miles_value) : null,
         completed_at: values.completed_at ? new Date(values.completed_at + 'T12:00:00').toISOString() : null,
       })
       onDone()
@@ -82,6 +84,18 @@ function LogModal({ task, asset, onClose, onDone }) {
               ? <>Last logged: <strong>{latestUsage.value.toLocaleString()} {unit}</strong> on {formatDate(latestUsage.recorded_at)}</>
               : <>No prior reading — enter current {unit} to start tracking</>}
           </div>
+        </div>
+      )}
+      {!needsUsage && asset.current_hours != null && (
+        <div className="form-group">
+          <label className="form-label">Current hours on meter</label>
+          <input type="number" placeholder={asset.current_hours ? `Last: ${asset.current_hours.toLocaleString()} h` : 'Enter current hours'} {...bind('hours_value')} />
+        </div>
+      )}
+      {!needsUsage && asset.current_miles != null && (
+        <div className="form-group">
+          <label className="form-label">Current miles on meter</label>
+          <input type="number" placeholder={asset.current_miles ? `Last: ${asset.current_miles.toLocaleString()} mi` : 'Enter current miles'} {...bind('miles_value')} />
         </div>
       )}
       <div className="form-row">
@@ -1008,9 +1022,7 @@ function HistoryTab({ asset, logs, onReload }) {
 
   useEffect(() => {
     api.getContractors().then(setContractors).catch(() => {})
-    if (asset.interval_type) {
-      api.getUsageLogs(asset.id).then(setUsageLogs).catch(() => {})
-    }
+    api.getUsageLogs(asset.id).then(setUsageLogs).catch(() => {})
   }, [asset.id])
 
   function startEdit(l) {
@@ -1051,7 +1063,7 @@ function HistoryTab({ asset, logs, onReload }) {
   // Merge completion logs + usage logs into one timeline
   const allEntries = [
     ...logs.map(l => ({ ...l, _type: 'completion', _date: l.completed_at })),
-    ...usageLogs.map(u => ({ ...u, _type: 'usage', _date: u.logged_at || u.created_at })),
+    ...usageLogs.map(u => ({ ...u, _type: 'usage', _date: u.recorded_at })),
   ].sort((a, b) => new Date(b._date) - new Date(a._date))
 
   // Group by year

@@ -56,7 +56,7 @@ def _cleanup_notified():
         del _notified[k]
 
 
-def run_escalation():
+def run_escalation(startup_run=False):
     """Main escalation job — called by scheduler every hour."""
     if not NOTIFICATIONS_ENABLED:
         logger.debug("Notifications disabled — skipping escalation run")
@@ -103,8 +103,9 @@ def run_escalation():
                         last_done, last_by, escalation_level
                     )
 
-                    # Fire notifications
-                    _handle_notification(task, asset, prop, status, days_until_due, escalation_level)
+                    # Fire notifications (skip on startup to avoid notification flood)
+                    if not startup_run:
+                        _handle_notification(task, asset, prop, status, days_until_due, escalation_level)
 
                     prop_tasks += 1
                     if status == "overdue":   prop_overdue += 1
@@ -269,7 +270,7 @@ def start_scheduler():
     from apscheduler.triggers.date import DateTrigger
     from datetime import datetime, timezone, timedelta
     scheduler.add_job(
-        run_escalation,
+        lambda: run_escalation(startup_run=True),
         trigger=DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(seconds=30)),
         id="escalation_startup",
         name="Startup escalation run",

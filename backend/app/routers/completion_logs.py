@@ -90,13 +90,17 @@ def log_completion(payload: schemas.LogCreate, db: Session = Depends(get_db), cu
         # Update task's last_completed fields
         task.last_completed_at = completed_at
         task.last_completed_by = current.id
+        asset = task.asset
         if payload.usage_value is not None:
             task.last_usage_value = payload.usage_value
-            asset = task.asset
             if task.interval_type == "hours":
                 asset.current_hours = payload.usage_value
             elif task.interval_type == "miles":
                 asset.current_miles = payload.usage_value
+        if payload.hours_value is not None:
+            asset.current_hours = payload.hours_value
+        if payload.miles_value is not None:
+            asset.current_miles = payload.miles_value
 
     else:
         # Freeform entry — must have asset_id and description
@@ -119,9 +123,15 @@ def log_completion(payload: schemas.LogCreate, db: Session = Depends(get_db), cu
         )
 
         # Update asset usage if provided
+        if payload.hours_value is not None:
+            asset.current_hours = payload.hours_value
+        if payload.miles_value is not None:
+            asset.current_miles = payload.miles_value
         if payload.usage_value is not None:
-            asset.current_hours = payload.usage_value if asset.current_hours else asset.current_hours
-            asset.current_miles = payload.usage_value if asset.current_miles else asset.current_miles
+            if asset.current_hours is not None:
+                asset.current_hours = payload.usage_value
+            if asset.current_miles is not None:
+                asset.current_miles = payload.usage_value
 
     db.add(log)
     db.commit()

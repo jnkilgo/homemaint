@@ -291,7 +291,9 @@ class LogCreate(BaseModel):
     contractor_id: Optional[int] = None
     cost: Optional[float] = None
     spare_used_id: Optional[int] = None
-    usage_value: Optional[float] = None  # current hours/miles at time of completion
+    usage_value: Optional[float] = None  # current hours/miles at time of completion (legacy)
+    hours_value: Optional[float] = None  # explicit hours reading
+    miles_value: Optional[float] = None  # explicit miles reading
     completed_at: Optional[datetime] = None  # defaults to now
     asset_id: Optional[int] = None  # required when task_id is None
 
