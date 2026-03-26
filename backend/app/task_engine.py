@@ -162,9 +162,9 @@ def _days_to_status(days_remaining: int, advance_warning_days: int) -> str:
 def get_escalation_level(days_overdue: int) -> int:
     """
     0 = not overdue
-    1 = 1-7 days overdue  (daily reminder)
-    2 = 8-14 days overdue (twice daily)
-    3 = 15+ days overdue  (every 12h, urgent)
+    1 = 1-7 days overdue  (notify once when first overdue)
+    2 = 8+ days overdue   (notify once per week)
+    3 = reserved for future use
     """
     if days_overdue <= 0:
         return 0

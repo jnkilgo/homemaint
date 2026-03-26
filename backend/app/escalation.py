@@ -31,14 +31,18 @@ NOTIFICATIONS_ENABLED = os.getenv("NOTIFICATIONS_ENABLED", "true").lower() == "t
 _notified = {}
 
 
-def _should_notify(task_id, escalation_level, twice_daily=False):
+def _should_notify(task_id, escalation_level):
+    """
+    Level 1: fire once when task first becomes overdue (once per day check)
+    Level 2: fire once per week for tasks 7+ days overdue
+    due_soon: fire once total
+    """
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    hour  = datetime.now(timezone.utc).hour
 
-    if twice_daily:
-        # Notify at ~8am and ~8pm UTC
-        slot = "am" if hour < 14 else "pm"
-        key = (task_id, escalation_level, today, slot)
+    if escalation_level == 2:
+        # Weekly — use ISO week number as key
+        week = datetime.now(timezone.utc).strftime("%Y-W%W")
+        key = (task_id, escalation_level, week)
     else:
         key = (task_id, escalation_level, today)
 
@@ -49,11 +53,29 @@ def _should_notify(task_id, escalation_level, twice_daily=False):
 
 
 def _cleanup_notified():
-    """Purge notification history older than 2 days to prevent memory growth."""
+    """Purge notification history older than 8 days to prevent memory growth."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     keys_to_delete = [k for k in _notified if isinstance(k[2], str) and k[2] < today]
     for k in keys_to_delete:
         del _notified[k]
+
+
+def _is_property_notifications_enabled(db, property_id):
+    """Check if notifications are enabled globally and for this specific property."""
+    from app.routers.settings import get_setting
+    import json
+    notifications_enabled = get_setting(db, "notifications_enabled")
+    if notifications_enabled == "false":
+        return False
+    disabled_props_raw = get_setting(db, "disabled_properties")
+    if disabled_props_raw:
+        try:
+            disabled = json.loads(disabled_props_raw)
+            if property_id in disabled:
+                return False
+        except Exception:
+            pass
+    return True
 
 
 def run_escalation(startup_run=False):
@@ -105,7 +127,7 @@ def run_escalation(startup_run=False):
 
                     # Fire notifications (skip on startup to avoid notification flood)
                     if not startup_run:
-                        _handle_notification(task, asset, prop, status, days_until_due, escalation_level)
+                        _handle_notification(task, asset, prop, status, days_until_due, escalation_level, db=db)
 
                     prop_tasks += 1
                     if status == "overdue":   prop_overdue += 1
@@ -136,10 +158,16 @@ def run_escalation(startup_run=False):
         db.close()
 
 
-def _handle_notification(task, asset, prop, status, days_until_due, escalation_level):
+def _handle_notification(task, asset, prop, status, days_until_due, escalation_level, db=None):
     """Decide whether to send a push notification for this task."""
+
+    # Check per-property notification settings
+    if db and not _is_property_notifications_enabled(db, prop.id):
+        return
+
     task_label = f"{asset.name} — {task.name}"
     prop_label = prop.name
+    days_over = abs(days_until_due or 0)
 
     if status == "due_soon" and days_until_due is not None:
         if _should_notify(task.id, "due_soon"):
@@ -152,34 +180,30 @@ def _handle_notification(task, asset, prop, status, days_until_due, escalation_l
             )
 
     elif escalation_level == 1:
+        # Fire once when task first becomes overdue
         if _should_notify(task.id, 1):
             mqtt_manager.send_mobile_notification(
                 title=f"Overdue: {task_label}",
-                message=f"{prop_label} · {abs(days_until_due or 0)} days overdue",
+                message=f"{prop_label} · {days_over} day{'s' if days_over != 1 else ''} overdue",
                 tag=f"hm_task_{task.id}",
                 priority="normal",
                 property_id=prop.id,
             )
 
     elif escalation_level == 2:
-        if _should_notify(task.id, 2, twice_daily=True):
+        # Fire once per week for tasks 7+ days overdue
+        if _should_notify(task.id, 2):
             mqtt_manager.send_mobile_notification(
-                title=f"⚠ Overdue: {task_label}",
-                message=f"{prop_label} · {abs(days_until_due or 0)} days overdue — needs attention",
+                title=f"⚠ Still overdue: {task_label}",
+                message=f"{prop_label} · {days_over} days overdue — needs attention",
                 tag=f"hm_task_{task.id}",
                 priority="normal",
                 property_id=prop.id,
             )
 
-    elif escalation_level == 3:
-        if _should_notify(task.id, 3, twice_daily=True):
-            mqtt_manager.send_mobile_notification(
-                title=f"🚨 Overdue: {task_label}",
-                message=f"{prop_label} · {abs(days_until_due or 0)} days overdue — action required",
-                tag=f"hm_task_{task.id}",
-                priority="normal",
-                property_id=prop.id,
-            )
+    # Level 3 reserved for future use
+    # elif escalation_level == 3:
+    #     pass
 
 
 def run_usage_reminders():
