@@ -247,6 +247,7 @@ class PaintRecord(Base):
     brand        = Column(String, nullable=True)
     color_name   = Column(String, nullable=True)
     color_code   = Column(String, nullable=True)
+    color_hex    = Column(String, nullable=True)
     sheen        = Column(String, nullable=True)
     date_painted = Column(Date, nullable=True)
     painted_by   = Column(String, nullable=True)

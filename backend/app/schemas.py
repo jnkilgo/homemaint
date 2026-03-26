@@ -332,6 +332,7 @@ class PaintCreate(BaseModel):
     brand: Optional[str] = None
     color_name: Optional[str] = None
     color_code: Optional[str] = None
+    color_hex: Optional[str] = None
     sheen: Optional[str] = None
     date_painted: Optional[date] = None
     painted_by: Optional[str] = None
@@ -349,6 +350,7 @@ class PaintOut(BaseModel):
     brand: Optional[str]
     color_name: Optional[str]
     color_code: Optional[str]
+    color_hex: Optional[str] = None
     sheen: Optional[str]
     date_painted: Optional[date]
     painted_by: Optional[str]
